@@ -26,9 +26,17 @@ User-facing docs: [README](README.md), [release guide](docs/RELEASE.md),
   as accepted risks, each with its limit, in `docs/ARCHITECTURE.md`.
 - Test build for the two-phone check: `dist/test.apk` (current as
   of the last commit).
-- Signing key: key 2 is the only trusted key (key 1 retired, its secret
-  deleted). The secret and staff QR are in `cafe-secrets/` (gitignored, keep
-  an offline backup).
+- Signing key: key 3 is the only trusted key. Its secret and staff QR are in
+  `cafe-secrets/`, with the Play upload key (gitignored, keep an offline
+  backup). Key id 0 is the public demo code for app reviewers
+  (`docs/review/`). It is never trusted: config validation, `keyRingOf` and
+  the key helpers all refuse it.
+- Google Play: every App content declaration is filed, and the store listing is
+  complete. Internal testing is set up for the owner's email. The closed test,
+  with the Google Group as testers, still has to be sent for review.
+  `docs/RELEASE.md` §4 has the state and the road to production (12 testers for
+  14 days). Bundles are built locally with `scripts/build-play-bundle.sh`, not
+  EAS.
 
 ## Gotchas found the hard way
 
@@ -58,13 +66,15 @@ User-facing docs: [README](README.md), [release guide](docs/RELEASE.md),
 bun scripts/dev-token.ts stamp 3        # signed stamp deep link for testing
 bun run render-brand                    # icons/splash from cafe.config.json
 bun run render-store                    # Play graphics from docs/store/raw/
-bun run setup-cafe check|new-key|retire <id>|print
+bun run setup-cafe check|new-key|retire <id>|print|demo
+scripts/build-play-bundle.sh            # signed .aab for Play → dist/
 ```
 
-iOS compile check without a Mac: GitHub → xnmp/cafe-loyalty (private) →
+iOS compile check without a Mac: GitHub → xnmp/cafe-loyalty →
 Actions → **iOS simulator build** → Run workflow (`gh workflow run
 ios-simulator.yml`). It builds unsigned for the simulator, launches the app
-and uploads screenshots. The simulator has no NFC.
+and uploads a screenshot. The simulator has no NFC, and deep links stop at an
+"Open in …?" prompt there, so it can't reach other screens.
 
 HCE unit tests (from `android/` after `bunx expo prebuild --platform android`):
 `./gradlew :cafe-hce:testDebugUnitTest`.
