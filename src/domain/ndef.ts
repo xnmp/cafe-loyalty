@@ -89,6 +89,7 @@ export function recordToUri(record: NdefRecord): string | null {
     const status = record.payload[0];
     if (status & 0x80) return null; // UTF-16 text; never produced by us
     const langLength = status & 0x3f;
+    if (1 + langLength > record.payload.length) return null;
     return utf8Decode(record.payload.subarray(1 + langLength));
   }
   return null;

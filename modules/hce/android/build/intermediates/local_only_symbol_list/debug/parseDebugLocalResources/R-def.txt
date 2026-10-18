@@ -1,0 +1,5 @@
+R_DEF: Internal format may change without notice
+local
+string cafe_hce_aid_group_description
+string cafe_hce_service_description
+xml cafe_hce_apduservice

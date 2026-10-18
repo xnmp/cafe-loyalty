@@ -1,0 +1,3 @@
+int string cafe_hce_aid_group_description 0x0
+int string cafe_hce_service_description 0x0
+int xml cafe_hce_apduservice 0x0

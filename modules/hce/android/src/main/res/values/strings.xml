@@ -1,0 +1,4 @@
+<resources>
+  <string name="cafe_hce_service_description">Loyalty stamp counter</string>
+  <string name="cafe_hce_aid_group_description">Loyalty stamps</string>
+</resources>

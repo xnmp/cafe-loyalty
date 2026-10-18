@@ -1,0 +1,20 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.cafehce'
+version = '1.0.0'
+
+// v2 enables the annotation-based API; this module uses the Kotlin Modules DSL.
+android {
+  namespace "expo.modules.cafehce"
+  defaultConfig {
+    versionCode 1
+    versionName '1.0.0'
+  }
+}
+
+dependencies {
+  testImplementation 'junit:junit:4.13.2'
+}

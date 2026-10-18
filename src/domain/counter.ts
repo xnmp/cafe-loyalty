@@ -134,19 +134,40 @@ export function statsBetween(log: CounterLog, from: number, to: number): Counter
   };
 }
 
-export function parseCounterLog(value: unknown): CounterLog | null {
-  if (typeof value !== 'object' || value === null) return null;
-  const v = value as { version?: unknown; issued?: unknown };
-  if (v.version !== 1 || !Array.isArray(v.issued)) return null;
-  const valid = v.issued.every(
-    (t: unknown) =>
-      typeof t === 'object' &&
-      t !== null &&
-      typeof (t as IssuedToken).nonceId === 'string' &&
-      ((t as IssuedToken).kind === 'stamp' || (t as IssuedToken).kind === 'redeem') &&
-      typeof (t as IssuedToken).count === 'number' &&
-      typeof (t as IssuedToken).issuedAt === 'number' &&
-      typeof (t as IssuedToken).status === 'string',
+const DELIVERY_STATUSES: readonly DeliveryStatus[] = ['offered', 'read', 'acked', 'withdrawn'];
+const ACK_STATUSES: readonly Ack['status'][] = ['stamped', 'redeemed', 'already-used', 'expired', 'no-reward', 'invalid'];
+
+const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+const isCount = (v: unknown): v is number => Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 255;
+const isNonNegativeInt = (v: unknown): v is number => Number.isInteger(v) && (v as number) >= 0;
+
+function isAck(v: unknown): v is Ack {
+  return (
+    isObject(v) &&
+    typeof v.nonceId === 'string' &&
+    ACK_STATUSES.includes(v.status as Ack['status']) &&
+    isNonNegativeInt(v.progress) &&
+    isNonNegativeInt(v.rewardsAvailable)
   );
-  return valid ? (value as CounterLog) : null;
+}
+
+function isIssuedToken(v: unknown): v is IssuedToken {
+  return (
+    isObject(v) &&
+    typeof v.nonceId === 'string' &&
+    v.nonceId.length > 0 &&
+    (v.kind === 'stamp' || v.kind === 'redeem') &&
+    isCount(v.count) &&
+    typeof v.issuedAt === 'number' &&
+    Number.isFinite(v.issuedAt) &&
+    DELIVERY_STATUSES.includes(v.status as DeliveryStatus) &&
+    typeof v.shownAsQr === 'boolean' &&
+    (v.ack === null || isAck(v.ack))
+  );
+}
+
+/** Validates an unknown value (e.g. parsed from storage) as a CounterLog. Returns null if any entry is malformed. */
+export function parseCounterLog(value: unknown): CounterLog | null {
+  if (!isObject(value) || value.version !== 1 || !Array.isArray(value.issued)) return null;
+  return value.issued.every(isIssuedToken) ? { version: 1, issued: value.issued } : null;
 }
