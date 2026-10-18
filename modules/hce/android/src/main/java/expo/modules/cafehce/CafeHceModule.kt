@@ -12,7 +12,6 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.util.Base64
-import com.facebook.react.common.LifecycleState
 import expo.modules.kotlin.exception.CodedException
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -111,7 +110,7 @@ class CafeHceModule : Module() {
 
   private fun preferServiceIfResumed() {
     if (destroyed || HceRuntime.armedOfferId == null) return
-    if (appContext.reactContext?.lifecycleState != LifecycleState.RESUMED) return
+    // setPreferredService rejects a non-resumed activity; that's caught below.
     val activity = appContext.currentActivity ?: return
     try {
       val adapter = NfcAdapter.getDefaultAdapter(activity) ?: return
