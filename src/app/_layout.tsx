@@ -36,6 +36,7 @@ function Navigator() {
         <Stack.Screen name="index" />
         <Stack.Screen name="history" />
         <Stack.Screen name="about" />
+        <Stack.Screen name="report" />
         <Stack.Screen name="scan" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
         <Stack.Screen name="staff/setup" options={{ presentation: 'modal' }} />
         <Stack.Screen name="counter/index" options={{ gestureEnabled: false }} />

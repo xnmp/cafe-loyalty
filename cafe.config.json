@@ -7,6 +7,7 @@
   "bundleId": "md.chong.cafecard",
   "easProjectId": "",
   "privacyPolicyUrl": "https://xnmp.github.io/cafe-loyalty/privacy/",
+  "supportEmail": "eastern-concourse-cafe-support@googlegroups.com",
   "rules": {
     "stampsPerReward": 9,
     "maxStampsPerTap": 10,

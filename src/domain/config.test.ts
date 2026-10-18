@@ -20,6 +20,7 @@ const mutations: readonly [string, (config: Mutable<CafeConfig>) => void][] = [
   ['scheme', (c) => { c.scheme = '1Cafe'; }],
   ['bundleId', (c) => { c.bundleId = 'invalid'; }],
   ['privacyPolicyUrl', (c) => { c.privacyPolicyUrl = 'http://example.com/privacy'; }],
+  ...['', 'support', 'help?body=hi@example.com', 'a b@example.com', null, 42].map((supportEmail): [string, (config: Mutable<CafeConfig>) => void] => ['supportEmail', (c) => { c.supportEmail = supportEmail as string; }]),
   ['rules.stampsPerReward', (c) => { c.rules.stampsPerReward = 1; }],
   ['rules.stampsPerReward', (c) => { c.rules.stampsPerReward = 21; }],
   ['rules.stampsPerReward', (c) => { c.rules.stampsPerReward = 9.5; }],

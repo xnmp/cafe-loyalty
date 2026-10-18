@@ -17,7 +17,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   name: cafe.shortName,
   slug: cafe.cafeId,
   scheme: cafe.scheme,
-  version: '1.0.0',
+  version: '1.0.1',
   orientation: 'portrait',
   icon: './assets/icon.png',
   userInterfaceStyle: 'automatic',
@@ -48,6 +48,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'android.permission.WRITE_EXTERNAL_STORAGE',
       'android.permission.USE_BIOMETRIC',
       'android.permission.USE_FINGERPRINT',
+      // Attaching a screenshot uses the system photo picker, which needs no media permission.
+      // Play makes apps holding these justify broad photo access.
+      'android.permission.READ_MEDIA_IMAGES',
+      'android.permission.READ_MEDIA_VIDEO',
+      'android.permission.READ_MEDIA_VISUAL_USER_SELECTED',
     ],
   },
   plugins: [
@@ -94,6 +99,17 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     './plugins/withNfcLaunch',
+    // Report a problem: the email composer (it can attach files) and the photo picker for a screenshot.
+    'expo-mail-composer',
+    [
+      'expo-image-picker',
+      {
+        photosPermission: `${cafe.name} lets you attach a screenshot when you report a problem.`,
+        // Same wording as expo-camera's: both plugins write NSCameraUsageDescription.
+        cameraPermission: `${cafe.name} uses the camera to scan loyalty codes at the counter.`,
+        microphonePermission: false,
+      },
+    ],
     ['expo-build-properties', { android: { minSdkVersion: 26 } }],
   ],
   experiments: { typedRoutes: true },

@@ -7,6 +7,15 @@ No backend, no accounts. The card lives on the customer's phone, like a paper
 card in a wallet. That is deliberate: nothing to host, nothing to pay for,
 nothing to break, no personal data collected.
 
+The one thing that leaves a phone, other than a tap or a code between the two
+phones, is a problem report, and the app doesn't send it. *Report a problem*
+(About, counter Settings, the card's storage-error screen) opens the person's
+own email app (expo-mail-composer, or a `mailto:` link where no composer is
+set up) addressed to `supportEmail`, a Google Group. The message has what they
+wrote, the app version, the phone model and, optionally, a screenshot they
+picked with the system photo picker. They read it and press send themselves.
+`src/domain/report.ts` builds the email.
+
 ## Trust model
 
 The counter phone is the authority. The customer's phone keeps its own card,

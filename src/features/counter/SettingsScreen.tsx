@@ -1,9 +1,10 @@
 import { router } from 'expo-router';
-import { KeyRound, Nfc, ShieldCheck, X } from 'lucide-react-native';
+import { KeyRound, MessageSquareWarning, Nfc, ShieldCheck, X } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { AppState, ScrollView, StyleSheet, View } from 'react-native';
 
 import * as hce from '../../../modules/hce';
+import { cafe } from '../../config';
 import { useStores } from '../../state/AppProviders';
 import { useStore } from '../../state/store';
 import { PinPad } from '../../ui/PinPad';
@@ -123,6 +124,7 @@ export function SettingsScreen() {
               <Row icon={ShieldCheck} title="Signing key" detail={staffState.credentials.demo ? "Demo key: these stamps don't count" : `Key #${staffState.credentials.keyId}`} last />
             </Group>
           </View>
+          {cafe.supportEmail ? <Group><Row icon={MessageSquareWarning} title="Report a problem" detail="Opens your email app with the details filled in" last onPress={() => router.push('/report')} /></Group> : null}
           <Button label="Stop using as counter" kind="danger" onPress={() => { setError(undefined); setConfirmLeave(true); }} />
         </ScrollView>
       )}

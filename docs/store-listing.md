@@ -43,4 +43,4 @@ Play: Food & Drink · App Store: Food & Drink
 
 ## Contact
 
-Email: chonw89@gmail.com (or the café's address, if the owner prefers to answer)
+Email: eastern-concourse-cafe-support@googlegroups.com (a Google Group: anyone can email it, members read it; add the café owners as members). The app's Report a problem screen writes to the same address (`supportEmail` in `cafe.config.json`).

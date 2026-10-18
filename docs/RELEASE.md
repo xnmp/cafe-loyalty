@@ -80,6 +80,11 @@ The Console app is **Eastern Concourse Cafe** (`md.chong.cafecard`). Done so far
   testers*. Closed testing uses the Google Group
   `eastern-concourse-cafe-testers@googlegroups.com`: anyone can join, members
   can't see each other, and nobody can post.
+- **Support**: *Report a problem* in the app and the Play listing's contact
+  email both go to the Google Group `eastern-concourse-cafe-support@googlegroups.com`.
+  Anyone can email it, including attachments; only members read it, and each
+  member gets every message. Add the café owners as members (Groups → the
+  group → People → Members → Add members) so they see reports too.
 
 From here to the public store:
 
@@ -195,7 +200,10 @@ different places on different models, usually in the middle of the back.
 - **Free drink**: *Redeem free drink* → customer opens their free drink ticket
   and taps, or *Scan their code*.
   Only the green **verified** screen means the reward is real.
-- **Settings** (gear, staff PIN): change PIN, or stop using the phone as the counter.
+- **Settings** (gear, staff PIN): change PIN, report a problem, or stop using the
+  phone as the counter.
+- **Problems**: customers and staff use *Report a problem* (About, or counter
+  Settings). It arrives by email from the support group (§4).
 - **Changing rules**: edit `cafe.config.json` and ship an update. Existing stamps
   keep counting.
 - **Lost staff code or a new counter phone**: the same `staff-key-<id>.html` works

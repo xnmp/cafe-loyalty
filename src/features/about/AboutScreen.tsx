@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
-import { AtSign, Clock, Coffee, ExternalLink, Gift, Globe, MapPin, Nfc, Phone, ShieldCheck, type LucideIcon } from 'lucide-react-native';
+import { AtSign, Clock, Coffee, ExternalLink, Gift, Globe, MapPin, MessageSquareWarning, Nfc, Phone, ShieldCheck, type LucideIcon } from 'lucide-react-native';
 import { useState } from 'react';
 import { Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -86,6 +86,12 @@ export function AboutScreen() {
           ) : null}
           {linkError([privacyPolicyUrl])}
         </Group>
+
+        {cafe.supportEmail ? (
+          <Group>
+            <Row icon={MessageSquareWarning} title="Report a problem" detail="Something not working, or an idea? Tell us." last onPress={() => router.push('/report')} />
+          </Group>
+        ) : null}
 
         <Pressable
           accessibilityLabel={`Version ${version}`}

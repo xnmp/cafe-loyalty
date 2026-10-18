@@ -1,6 +1,7 @@
 import { bytesEqual, fromBase64Url } from './bytes';
 import type { Rules } from './card';
 import { DEMO_KEY_ID, DEMO_PUBLIC_KEY } from './provisioning';
+import { isEmailAddress } from './report';
 import { err, ok, type Result } from './result';
 import type { KeyRing } from './token';
 
@@ -41,6 +42,8 @@ export interface CafeConfig {
   readonly easProjectId?: string;
   /** Linked from About; the stores require the policy to be reachable in the app. */
   readonly privacyPolicyUrl?: string;
+  /** Where Report a problem sends its email. Without it the app hides the option. */
+  readonly supportEmail?: string;
   readonly rules: Rules & {
     /** Singular noun phrase, e.g. "free drink". */
     readonly rewardName: string;
@@ -75,6 +78,7 @@ export function validateConfig(c: CafeConfig): Result<CafeConfig, readonly strin
   check(/^[a-z][a-z0-9]{1,31}$/.test(c.scheme ?? ''), 'scheme must be lowercase letters/digits, starting with a letter');
   check(/^[a-zA-Z][a-zA-Z0-9]*(\.[a-zA-Z][a-zA-Z0-9]*)+$/.test(c.bundleId ?? ''), 'bundleId must look like com.example.app');
   check(c.privacyPolicyUrl === undefined || /^https:\/\/\S+$/.test(c.privacyPolicyUrl), 'privacyPolicyUrl must be an https:// link');
+  check(c.supportEmail === undefined || (typeof c.supportEmail === 'string' && isEmailAddress(c.supportEmail)), 'supportEmail must be a plain email address like help@example.com');
   check(Number.isInteger(c.rules?.stampsPerReward) && c.rules.stampsPerReward >= 2 && c.rules.stampsPerReward <= 20,
     'rules.stampsPerReward must be an integer between 2 and 20');
   check(Number.isInteger(c.rules?.maxStampsPerTap) && c.rules.maxStampsPerTap >= 1 && c.rules.maxStampsPerTap <= 50,
