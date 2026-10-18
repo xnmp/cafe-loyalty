@@ -7,6 +7,11 @@ name: iOS simulator build
 on:
   workflow_dispatch:
 
+# macOS minutes are billed at 10x: never run two of these at once.
+concurrency:
+  group: ios-simulator
+  cancel-in-progress: true
+
 jobs:
   build:
     # Expo SDK 58 needs Xcode 26.4+; this image defaults to a newer 26.x.
