@@ -1,6 +1,7 @@
 import type { Ack } from './link';
 import { buildTokenLink } from './link';
 import { encodeUriMessage } from './ndef';
+import { isEpochMs } from './time';
 import { nonceId, signToken, type TokenKind } from './token';
 
 /**
@@ -181,8 +182,7 @@ function isIssuedToken(v: unknown): v is IssuedToken {
     v.nonceId.length > 0 &&
     (v.kind === 'stamp' || v.kind === 'redeem') &&
     isCount(v.count) &&
-    typeof v.issuedAt === 'number' &&
-    Number.isFinite(v.issuedAt) &&
+    isEpochMs(v.issuedAt) &&
     DELIVERY_STATUSES.includes(v.status as DeliveryStatus) &&
     typeof v.shownAsQr === 'boolean' &&
     (v.ack === null || isAck(v.ack))
@@ -190,7 +190,7 @@ function isIssuedToken(v: unknown): v is IssuedToken {
 }
 
 const isRedemptionRecord = (v: unknown): v is RedemptionRecord =>
-  isObject(v) && typeof v.requestId === 'string' && v.requestId.length > 0 && typeof v.at === 'number' && Number.isFinite(v.at);
+  isObject(v) && typeof v.requestId === 'string' && v.requestId.length > 0 && isEpochMs(v.at);
 
 /**
  * Validates an unknown value (e.g. parsed from storage) as a CounterLog.

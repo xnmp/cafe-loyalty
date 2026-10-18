@@ -96,7 +96,7 @@ test.each([
   ['non-string nonce', { nonceId: 1 }], ['unknown kind', { kind: 'other' }],
   ['non-numeric count', { count: '1' }], ['non-numeric issuedAt', { issuedAt: '1' }], ['non-string status', { status: 1 }],
   ['zero count', { count: 0 }], ['negative count', { count: -1 }], ['fractional count', { count: 1.5 }],
-  ['NaN count', { count: NaN }], ['NaN issuedAt', { issuedAt: NaN }],
+  ['NaN count', { count: NaN }], ['NaN issuedAt', { issuedAt: NaN }], ['issuedAt no date can hold', { issuedAt: 1e100 }],
   ['unknown status', { status: 'unknown' }], ['non-boolean shownAsQr', { shownAsQr: 'yes' }], ['malformed ack', { ack: { status: 'unknown' } }],
 ])('parseCounterLog drops %s', (_label, override) => {
   expect(parseCounterLog({ version: 2, redemptions: [], issued: [offer.record, { ...offer.record, ...override }] })).toEqual(base);

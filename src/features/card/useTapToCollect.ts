@@ -4,7 +4,7 @@ import { AppState, Platform } from 'react-native';
 
 import { cafe } from '../../config';
 import { cancelRead, getAvailability, openNfcSettings, readOnce, type NfcAvailability } from '../../infra/nfcReader';
-import type { IntakeSource } from '../../state/cardStore';
+import type { IntakeSource, TapOptions } from '../../state/cardStore';
 import { useStores } from '../../state/AppProviders';
 import type { Feedback } from './feedback';
 import { submitWithFeedback, tapWithFeedback } from './submit';
@@ -23,7 +23,11 @@ export interface TapController {
   submit(uris: readonly string[], source: Exclude<IntakeSource, 'nfc'>): Promise<Feedback>;
 }
 
-export function useTapToCollect({ paused }: { paused: boolean }): TapController {
+/**
+ * `useReward`: the customer has opened a reward to use it. Only then can a tap
+ * hand its stamps to the counter phone; otherwise a tap only collects stamps.
+ */
+export function useTapToCollect({ paused, useReward }: { paused: boolean; useReward: boolean }): TapController {
   const { card } = useStores();
   const [availability, setAvailability] = useState<NfcAvailability | 'checking'>('checking');
   const [reading, setReading] = useState(false);
@@ -33,7 +37,6 @@ export function useTapToCollect({ paused }: { paused: boolean }): TapController 
     (uris: readonly string[], source: Exclude<IntakeSource, 'nfc'>) => submitWithFeedback(card, uris, source),
     [card],
   );
-  const respond = useCallback((uris: readonly string[]) => tapWithFeedback(card, uris), [card]);
 
   // Re-check NFC whenever the screen gains focus or the app returns from Settings.
   useFocusEffect(
@@ -53,6 +56,7 @@ export function useTapToCollect({ paused }: { paused: boolean }): TapController 
   // Pausing skips the next read rather than cancelling the current one, so an
   // in-flight ack write still reaches the counter phone.
   const isPaused = useEffectEvent(() => paused);
+  const options = useEffectEvent((): TapOptions => ({ useReward }));
   const focused = useIsFocused();
   useEffect(() => {
     if (!focused || !passive || availability !== 'ready') return;
@@ -63,7 +67,7 @@ export function useTapToCollect({ paused }: { paused: boolean }): TapController 
           await sleep(400);
           continue;
         }
-        const outcome = await readOnce('', respond);
+        const outcome = await readOnce('', (uris) => tapWithFeedback(card, uris, options()));
         // Give the phone time to leave the field so the same tap isn't read twice.
         await sleep(outcome === 'handled' ? 1800 : outcome === 'failed' ? 800 : 250);
       }
@@ -72,13 +76,15 @@ export function useTapToCollect({ paused }: { paused: boolean }): TapController 
       active = false;
       void cancelRead();
     };
-  }, [focused, passive, availability, respond]);
+  }, [focused, passive, availability, card]);
 
   const startSession = useCallback(() => {
     if (reading) return;
     setReading(true);
-    void readOnce(`Hold the top of your iPhone near the back of the ${cafe.name} counter phone.`, respond).finally(() => setReading(false));
-  }, [reading, respond]);
+    // iOS: the system sheet covers the app for the whole session, so the choice made as it opened holds.
+    const message = `Hold the top of your iPhone near the back of the ${cafe.name} counter phone.`;
+    void readOnce(message, (uris) => tapWithFeedback(card, uris, { useReward })).finally(() => setReading(false));
+  }, [reading, card, useReward]);
 
   return { availability, reading, passive, startSession, openSettings: () => void openNfcSettings(), submit };
 }

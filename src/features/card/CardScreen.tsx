@@ -7,6 +7,7 @@ import { cafe } from '../../config';
 import { summarize } from '../../domain/card';
 import { rewardsUnlocked } from '../../domain/intake';
 import { useStores } from '../../state/AppProviders';
+import type { IntakeEvent } from '../../state/cardStore';
 import { useStore } from '../../state/store';
 import { AppText, Button, IconButton, Screen } from '../../ui/primitives';
 import { Appear, NfcPulse } from '../../ui/motion';
@@ -33,18 +34,22 @@ export function CardScreen() {
     () => (lastEvent ? describe(lastEvent, { cafeName: cafe.name, rewardName, stampsPerReward, summary }) : null),
     [lastEvent, rewardName, stampsPerReward, summary],
   );
+  // `ready`: the customer opened their reward, so a tap may use it. `code`: they're using it by code instead.
   // Each opening remounts the sheet so it starts at its first step.
-  const [redeemOpen, setRedeemOpen] = useState(false);
+  const [redeem, setRedeem] = useState<'closed' | 'ready' | 'code'>('closed');
   const [redeemKey, setRedeemKey] = useState(0);
   const openRedeem = () => {
     setRedeemKey((k) => k + 1);
-    setRedeemOpen(true);
+    setRedeem('ready');
   };
-  // Don't read the counter phone while the customer is busy with a sheet.
-  const tap = useTapToCollect({ paused: feedback !== null || redeemOpen });
+  // Don't read the counter phone while feedback or a code is on screen.
+  const tap = useTapToCollect({ paused: feedback !== null || redeem === 'code', useReward: redeem === 'ready' });
 
   const dismiss = useCallback(() => {
-    if (lastEvent) cardStore.dismiss(lastEvent.id);
+    if (!lastEvent) return;
+    // Using the reward ends the redemption; after anything else (a stamp, a tap cut short) it's still open.
+    if (usedReward(lastEvent)) setRedeem('closed');
+    cardStore.dismiss(lastEvent.id);
   }, [cardStore, lastEvent]);
 
   // While a completed card is being celebrated, keep it full with the reward lit;
@@ -97,10 +102,21 @@ export function CardScreen() {
 
       <TapPanel tap={tap} hasReward={summary.rewardsAvailable > 0} />
       <FeedbackSheet feedback={feedback} onDismiss={dismiss} />
-      <RedeemSheet key={redeemKey} visible={redeemOpen} count={summary.rewardsAvailable} onClose={() => setRedeemOpen(false)} />
+      {/* Steps aside while a tap's feedback shows, then comes back unless the reward was used. */}
+      <RedeemSheet
+        key={redeemKey}
+        visible={redeem !== 'closed' && feedback === null}
+        count={summary.rewardsAvailable}
+        tap={tap}
+        onCodeShown={() => setRedeem('code')}
+        onClose={() => setRedeem('closed')}
+      />
     </Screen>
   );
 }
+
+const usedReward = (event: IntakeEvent): boolean =>
+  (event.kind === 'success' && event.outcome.kind === 'redeemed') || (event.kind === 'repeat' && event.original.kind === 'redeem');
 
 function Unavailable({ onRetry }: { onRetry: () => void }) {
   return (
@@ -175,7 +191,7 @@ function TapPanel({ tap, hasReward }: { tap: TapController; hasReward: boolean }
               <View style={{ flex: 1 }}>
                 <AppText variant="heading">Ready to tap</AppText>
                 <AppText variant="caption" tone="muted" style={{ marginTop: 2 }}>
-                  Hold your phone against the back of the counter phone{hasReward ? ' to collect or redeem' : ''}.
+                  Hold your phone against the back of the counter phone.{hasReward ? ` To use your ${cafe.rules.rewardName}, tap its ticket first.` : ''}
                 </AppText>
               </View>
             </View>
@@ -183,7 +199,7 @@ function TapPanel({ tap, hasReward }: { tap: TapController; hasReward: boolean }
           </>
         ) : (
           <>
-            <Button size="lg" icon={Nfc} label={hasReward ? 'Tap to collect or redeem' : 'Tap to collect'} onPress={tap.startSession} busy={tap.reading} testID="tap-to-collect" />
+            <Button size="lg" icon={Nfc} label="Tap to collect" onPress={tap.startSession} busy={tap.reading} testID="tap-to-collect" />
             {scanLink}
           </>
         );

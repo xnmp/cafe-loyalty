@@ -1,4 +1,5 @@
 import { fromBase64Url } from './bytes';
+import { isEpochMs } from './time';
 import { TOKEN_LENGTH } from './token';
 
 /**
@@ -130,7 +131,7 @@ export function parseCard(value: unknown): ParsedCard | null {
 function parseEvent(value: unknown): CardEvent | null {
   if (!isRecord(value)) return null;
   const { kind, at, nonceId } = value;
-  if (typeof at !== 'number' || !Number.isFinite(at)) return null;
+  if (!isEpochMs(at)) return null;
   if (typeof nonceId !== 'string' || nonceId.length === 0) return null;
 
   if (kind === 'stamp') {

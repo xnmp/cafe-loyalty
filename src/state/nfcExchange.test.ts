@@ -61,14 +61,17 @@ function settled(store: CounterStore): Promise<OfferOutcome | null> {
   });
 }
 
-/** One tap: the customer reads what the counter serves and writes its reply back (unless the phones part too soon). */
-async function tap(counter: Counter, customer: CardStore, { replyArrives = true } = {}): Promise<{ event: IntakeEvent; outcome: OfferOutcome | null } | null> {
+/**
+ * One tap: the customer reads what the counter serves and writes its reply back
+ * (unless the phones part too soon). `useReward`: the customer opened their reward first.
+ */
+async function tap(counter: Counter, customer: CardStore, { replyArrives = true, useReward = false } = {}): Promise<{ event: IntakeEvent; outcome: OfferOutcome | null } | null> {
   const served = counter.serving();
   if (!served) return null;
   const records = decodeMessage(served.ndef);
   expect(records).not.toBeNull();
   counter.store.onTagRead(served.offerId);
-  const exchange = await customer.tap(messageUris(records!));
+  const exchange = await customer.tap(messageUris(records!), { useReward });
   let delivered = false;
   if (exchange.reply) {
     const message = encodeUriMessage(exchange.reply);
@@ -115,7 +118,7 @@ test('nine visits earn a reward, and redeeming it by tap is verified once', asyn
   expect(summary(customer.store).rewardsAvailable).toBe(1);
 
   counter.store.offer(credentials, 'redeem', 1);
-  const redeemed = await tap(counter, customer.store);
+  const redeemed = await tap(counter, customer.store, { useReward: true });
   expect(redeemed?.outcome).toEqual({ kind: 'verified', at: w.clock.now });
   expect(redeemed?.event).toMatchObject({ kind: 'success', outcome: { kind: 'redeemed', via: 'nfc' } });
   expect(summary(customer.store)).toMatchObject({ rewardsAvailable: 0, rewardsRedeemed: 1, unspentStamps: 0 });
@@ -145,11 +148,11 @@ test('a redemption cut off mid-write keeps the reward, and tapping again redeems
   const { w, counter, customer } = await setup();
   await visit(w, counter, customer.store, 9);
   counter.store.offer(credentials, 'redeem', 1);
-  const cut = await tap(counter, customer.store, { replyArrives: false });
+  const cut = await tap(counter, customer.store, { replyArrives: false, useReward: true });
   expect(cut?.event).toMatchObject({ kind: 'error', error: 'not-delivered' });
   expect(summary(customer.store).rewardsAvailable).toBe(1);
 
-  const retry = await tap(counter, customer.store);
+  const retry = await tap(counter, customer.store, { useReward: true });
   expect(retry?.outcome).toMatchObject({ kind: 'verified' });
   expect(summary(customer.store).rewardsAvailable).toBe(0);
 });
@@ -162,11 +165,28 @@ test('a card copied to a second phone gets one free drink, not two', async () =>
   expect(summary(copy.store).rewardsAvailable).toBe(1);
 
   counter.store.offer(credentials, 'redeem', 1);
-  expect((await tap(counter, customer.store))?.outcome).toMatchObject({ kind: 'verified' });
+  expect((await tap(counter, customer.store, { useReward: true }))?.outcome).toMatchObject({ kind: 'verified' });
   counter.store.dismiss();
 
   counter.store.offer(credentials, 'redeem', 1);
-  expect((await tap(counter, copy.store))?.outcome).toMatchObject({ kind: 'refused', reason: 'already-redeemed' });
+  expect((await tap(counter, copy.store, { useReward: true }))?.outcome).toMatchObject({ kind: 'refused', reason: 'already-redeemed' });
+});
+
+test('a counter request replayed from another device takes nothing from a card that is just on screen', async () => {
+  const { w, counter, customer } = await setup();
+  await visit(w, counter, customer.store, 9);
+  counter.store.offer(credentials, 'redeem', 1);
+  // Someone reads the counter phone's request and plays it to a customer's phone from their own device.
+  const captured = messageUris(decodeMessage(counter.serving()!.ndef)!);
+  const bumped = await customer.store.tap(captured, { useReward: false });
+  expect(bumped.reply).toBeNull();
+  expect(await bumped.finish(true)).toMatchObject({ kind: 'error', error: 'reward-closed' });
+  expect(summary(customer.store).rewardsAvailable).toBe(1);
+
+  // Tapping the real counter without opening the reward doesn't use it either; opening it first does.
+  expect((await tap(counter, customer.store))?.outcome).toBeNull();
+  expect(counter.store.getSnapshot().offer).toMatchObject({ phase: 'read', outcome: null });
+  expect((await tap(counter, customer.store, { useReward: true }))?.outcome).toMatchObject({ kind: 'verified' });
 });
 
 test('a phone with no reward is told so, and the counter shows why', async () => {

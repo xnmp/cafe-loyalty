@@ -66,7 +66,7 @@ export function AboutScreen() {
           <Group>
             <Row icon={Coffee} title="Order as usual" />
             <Row icon={Nfc} title="Tap your phone on the counter phone" detail="Or scan the code on its screen" />
-            <Row icon={Gift} title={`Every ${ordinal(rules.stampsPerReward + 1)} drink is free`} detail={`Collect ${rules.stampsPerReward} stamps for a ${rules.rewardName}`} last />
+            <Row icon={Gift} title={`Every ${ordinal(rules.stampsPerReward + 1)} drink is free`} detail={`Collect ${rules.stampsPerReward} stamps, then open its ticket and tap to use it`} last />
           </Group>
         </View>
 

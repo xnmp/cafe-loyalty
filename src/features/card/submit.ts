@@ -3,7 +3,7 @@ import * as Haptics from 'expo-haptics';
 import { cafe } from '../../config';
 import { summarize } from '../../domain/card';
 import type { TapReply } from '../../infra/nfcReader';
-import type { CardStore, IntakeEvent, IntakeSource } from '../../state/cardStore';
+import type { CardStore, IntakeEvent, IntakeSource, TapOptions } from '../../state/cardStore';
 import { describe, type Feedback } from './feedback';
 
 /** Haptic pattern per outcome: one "thump" per stamp, a flourish for rewards. */
@@ -43,8 +43,8 @@ export async function submitWithFeedback(store: CardStore, uris: readonly string
 }
 
 /** NFC: the reply to write back, and the iOS sheet text once it's settled. */
-export async function tapWithFeedback(store: CardStore, uris: readonly string[]): Promise<TapReply> {
-  const exchange = await store.tap(uris);
+export async function tapWithFeedback(store: CardStore, uris: readonly string[], options: TapOptions): Promise<TapReply> {
+  const exchange = await store.tap(uris, options);
   return {
     write: exchange.reply,
     async settle(written) {

@@ -95,7 +95,9 @@ export function describe(event: IntakeEvent, ctx: FeedbackContext): Feedback {
     case 'not-delivered':
       return problem('Hold still a little longer', 'Your phone moved away before it finished. Your stamps are still on your card — tap again.', 'Tap again');
     case 'tap-again':
-      return problem(`Tap again to use your ${rewardName}`, 'Keep this app open and hold your phone to the counter phone once more.', 'Tap again');
+      return problem(`Tap again to use your ${rewardName}`, `In this app, tap your ${rewardName} ticket, then hold your phone to the counter phone once more.`, 'Tap again');
+    case 'reward-closed':
+      return problem(`Open your ${rewardName} first`, `Tap your ${rewardName} ticket, then hold your phone to the counter phone again.`, `Open your ${rewardName} first`);
     case 'unknown-key':
     case 'invalid-signature':
     case 'malformed':

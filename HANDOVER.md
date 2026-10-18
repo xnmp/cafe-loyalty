@@ -52,3 +52,9 @@ bun run setup-cafe check|new-key|retire <id>|print
 
 HCE unit tests (from `android/` after `bunx expo prebuild --platform android`):
 `./gradlew :cafe-hce:testDebugUnitTest`.
+
+A sideloadable test build for the two-phone NFC check is at
+`dist/corner-cafe-test.apk` (gitignored). It's signed with the debug key.
+RELEASE.md §7 explains how to rebuild it and what uninstalling it wipes. The
+local Gradle build takes about 11 minutes and a lot of RAM. Use `--no-daemon`
+so nothing stays resident afterwards.

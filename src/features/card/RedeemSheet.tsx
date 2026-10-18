@@ -1,36 +1,53 @@
-import { Gift, QrCode } from 'lucide-react-native';
+import { Gift, Nfc, QrCode, Smartphone } from 'lucide-react-native';
 import { useState } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
 import { cafe } from '../../config';
 import { useStores } from '../../state/AppProviders';
-import { Appear } from '../../ui/motion';
+import { Appear, NfcPulse } from '../../ui/motion';
 import { AppText, Button } from '../../ui/primitives';
 import { Sheet } from '../../ui/Sheet';
-import { elevation, radius, space, useTheme } from '../../ui/theme';
+import { elevation, radius, space, useTheme, withAlpha } from '../../ui/theme';
+import type { TapController } from './useTapToCollect';
 
 type Step = { readonly kind: 'intro'; readonly error?: string } | { readonly kind: 'code'; readonly link: string };
 
 /**
- * Using a reward without NFC: the customer shows a code and the counter phone
- * scans it. Showing the code spends the reward on this phone; it stays in
- * History so it can be shown again if it was never scanned. Mount with a fresh
- * `key` each time it opens.
+ * Using a reward. While this is open a tap on the counter phone may spend it
+ * (the caller passes that to the tap controller); nothing else can. Or the
+ * customer shows a code and the counter phone scans it. Showing the code spends
+ * the reward on this phone; it stays in History so it can be shown again if it
+ * was never scanned. Mount with a fresh `key` each time it opens.
  */
-export function RedeemSheet({ visible, count, onClose }: { visible: boolean; count: number; onClose: () => void }) {
+export function RedeemSheet({
+  visible,
+  count,
+  tap,
+  onCodeShown,
+  onClose,
+}: {
+  visible: boolean;
+  count: number;
+  tap: TapController;
+  onCodeShown: () => void;
+  onClose: () => void;
+}) {
   const { card } = useStores();
   const [step, setStep] = useState<Step>({ kind: 'intro' });
   const [busy, setBusy] = useState(false);
   const { rewardName } = cafe.rules;
+  const nfcReady = tap.availability === 'ready';
 
   const showCode = async () => {
     if (busy) return;
     setBusy(true);
     const result = await card.redeemWithCode();
     setBusy(false);
-    if (result.ok) setStep({ kind: 'code', link: result.value.link });
-    else setStep({ kind: 'intro', error: result.error === 'no-reward' ? `There's no ${rewardName} on your card right now.` : "Couldn't save that. Free up some space and try again." });
+    if (result.ok) {
+      setStep({ kind: 'code', link: result.value.link });
+      onCodeShown();
+    } else setStep({ kind: 'intro', error: result.error === 'no-reward' ? `There's no ${rewardName} on your card right now.` : "Couldn't save that. Free up some space and try again." });
   };
 
   return (
@@ -44,14 +61,30 @@ export function RedeemSheet({ visible, count, onClose }: { visible: boolean; cou
             {count > 1 ? `${count} ${rewardName}s ready` : `Your ${rewardName}`}
           </AppText>
           <AppText tone="muted" align="center" style={styles.body}>
-            Ask for it when you order. When the barista is ready, tap your phone on the counter phone — or show them a code.
+            {nfcReady
+              ? 'Ask for it when you order. When the barista is ready, hold your phone to the counter phone.'
+              : 'Ask for it when you order. When the barista is ready, show them your code.'}
           </AppText>
           {step.error ? (
             <AppText variant="callout" tone="danger" align="center" accessibilityLiveRegion="polite" style={{ marginTop: space.sm }}>
               {step.error}
             </AppText>
           ) : null}
-          <Button icon={QrCode} label="Show my code" busy={busy} onPress={() => void showCode()} style={styles.primary} />
+          {nfcReady ? (
+            tap.passive ? (
+              <ReadyToTap />
+            ) : (
+              <Button icon={Nfc} label="Tap the counter phone" busy={tap.reading} onPress={tap.startSession} style={styles.primary} />
+            )
+          ) : null}
+          <Button
+            icon={QrCode}
+            kind={nfcReady ? 'secondary' : 'primary'}
+            label="Show my code"
+            busy={busy}
+            onPress={() => void showCode()}
+            style={nfcReady ? styles.secondary : styles.primary}
+          />
           <AppText variant="caption" tone="muted" align="center" style={{ marginTop: space.xs }}>
             {`Showing the code uses ${count > 1 ? `one ${rewardName}` : `your ${rewardName}`}.`}
           </AppText>
@@ -94,6 +127,26 @@ function RedemptionCode({ link, onDone, again = false }: { link: string; onDone:
   );
 }
 
+/** Android keeps reading while the sheet is open, so there's nothing to press. */
+function ReadyToTap() {
+  const { color } = useTheme();
+  return (
+    <View
+      style={[styles.ready, { borderColor: withAlpha(color.accent, 0.35), backgroundColor: withAlpha(color.accent, 0.06) }]}
+      accessible
+      accessibilityLabel="Ready. Hold your phone against the back of the counter phone."
+    >
+      <NfcPulse icon={Smartphone} size={52} />
+      <View style={{ flex: 1 }}>
+        <AppText variant="heading">Ready to tap</AppText>
+        <AppText variant="caption" tone="muted" style={{ marginTop: 2 }}>
+          Hold it against the back of the counter phone.
+        </AppText>
+      </View>
+    </View>
+  );
+}
+
 function GiftBadge() {
   const { color } = useTheme();
   return (
@@ -107,6 +160,17 @@ const styles = StyleSheet.create({
   content: { alignItems: 'center', paddingBottom: space.xs },
   body: { marginTop: space.xs, maxWidth: 320 },
   primary: { alignSelf: 'stretch', marginTop: space.xl },
+  secondary: { alignSelf: 'stretch', marginTop: space.md },
+  ready: {
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    marginTop: space.xl,
+    padding: space.md,
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth * 2,
+  },
   badge: { width: 88, height: 88, borderRadius: 44, alignItems: 'center', justifyContent: 'center' },
   qrCard: { backgroundColor: '#FFFFFF', borderRadius: radius.lg, padding: space.md, marginTop: space.sm },
 });

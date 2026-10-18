@@ -49,19 +49,46 @@ but nothing it says about that card is trusted when a reward is handed out.
 - The barista's "verified" screen stays up until closed. A request refused as
   already used within the last 10 minutes says so, so staff can tell a missed
   confirmation (or a counter restart mid-check) from an old code.
+- A tap hands over the card's stamps only while the customer has their reward
+  open (the free-drink sheet). With just the card on screen, a redemption
+  request gets no reply, so a counter request recorded and replayed from another
+  device can't take a reward off someone's phone. Stamps don't need this: they
+  carry no value until redeemed.
 - What this stops: forged stamps; copying a stamp token to other phones (only
   the first redemption that uses it succeeds); fake "redeemed" replies from an
   NFC tool; re-showing an old success screen or code; a rooted phone inflating
-  its own card (the counter only accepts genuine, unspent proofs).
-- Accepted risks: a copied stamp *displays* on several phones until one of them
-  redeems it, and a card holding stamps spent elsewhere (copied card, stale
-  backup) overstates its balance by exactly those stamps; the counter spends
-  only the unspent ones. If an NFC write reaches the counter but the customer's
-  phone sees it fail, the reward stays on the card until the next attempt,
-  which the counter refuses as already used; with two counter phones, each keeps its own registry, so the same
-  stamps could be redeemed once on each; a lost customer phone loses its card
-  unless restored from an OS backup; resetting the counter phone without its
-  backup forgets which stamps were spent.
+  its own card (the counter only accepts genuine, unspent proofs); replaying a
+  counter request to a customer's phone. However the customer side is tampered
+  with, free drinks given never exceed the stamps this counter phone issued
+  divided by the stamps per reward.
+- Accepted risks, each with its limit:
+  - A copied stamp *displays* on several phones until one of them redeems it.
+    A card holding stamps spent elsewhere (a copied card, an old backup)
+    overstates its balance by those stamps. If it redeems by tap, the counter
+    refuses, but the customer's phone still counts that reward as used, so its
+    genuine stamps stop showing. Staff can stamp them back by hand.
+  - A redemption code carries the stamps it spends. When its last stamp came
+    from a multi-drink stamp, the rest of that stamp travels in the code too.
+    Someone who photographs the code and builds their own request could spend
+    that remainder (fewer stamps than one tap can give) before its owner does.
+    With a reward of their own, they could also redeem it under the code's
+    request id first, so the photographed code is refused as already used. That
+    gains them nothing, and the owner's stamps stay unspent on the counter but
+    marked used on their phone.
+  - If an NFC write reaches the counter but the customer's phone sees it fail,
+    the reward stays on the card until the next attempt, which the counter
+    refuses as already used.
+  - A malformed or empty request written by an NFC tool ends the counter's
+    current offer with a refusal. Staff start it again.
+  - With two counter phones, each keeps its own registry, so the same stamps
+    could be redeemed once on each.
+  - Restoring the counter phone from a backup forgets spends made after that
+    backup. Resetting it without one forgets them all.
+  - A lost customer phone loses its card unless restored from an OS backup.
+  - Anyone with the staff code, or with the counter phone unlocked in front of
+    them, can give stamps: the PIN guards settings (changing it, leaving counter
+    mode), not stamping. Its lockout resets when the app restarts. Retiring a
+    key takes an app update and also voids the unspent stamps it signed.
 - The counter phone's secret is provisioned by scanning a staff QR code made
   by `bun run setup-cafe`; it is stored in SecureStore (excluded from backups)
   and never leaves the device.

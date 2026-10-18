@@ -7,6 +7,10 @@ import { cafe, cardOf, ctx, keys, memoryStorage, now, token, value } from '../te
 import { CARD_KEY, createCardStore, type IntakeEvent } from './cardStore';
 
 const link = (id = 20, count = 1, kind: 'stamp' | 'redeem' = 'stamp') => buildTokenLink(cafe.scheme, token(id, count, { kind }));
+/** The customer has the card on screen; they haven't opened a reward. */
+const cardOnScreen = { useReward: false };
+/** The customer opened their reward to use it. */
+const rewardOpen = { useReward: true };
 function setup(initial = emptyCard) {
   const fake = memoryStorage({ [CARD_KEY]: JSON.stringify(initial) });
   const store = createCardStore({ storage: fake.storage, now: () => now, cafe, keys });
@@ -31,12 +35,12 @@ test('QR stamps persist, publish success, repeat without writing, and reject unr
 
 test('NFC stamps are saved before finish and reply with a stamped ack, including retries', async () => {
   const { store, writes } = setup();
-  const exchange = await store.tap([link(20, 3)]);
+  const exchange = await store.tap([link(20, 3)], cardOnScreen);
   expect(writes).toHaveLength(1);
   expect(summarize(store.getSnapshot().card, cafe.rules).totalStamps).toBe(3);
   expect(parseLink(cafe.scheme, exchange.reply!)).toMatchObject({ kind: 'ack', ack: { status: 'stamped', progress: 3, rewardsAvailable: 0 } });
   expect(await exchange.finish(false)).toMatchObject({ kind: 'success' });
-  const again = await store.tap([link(20, 3)]);
+  const again = await store.tap([link(20, 3)], cardOnScreen);
   expect(await again.finish(true)).toMatchObject({ kind: 'repeat' });
   expect(parseLink(cafe.scheme, again.reply!)).toMatchObject({ kind: 'ack', ack: { status: 'stamped' } });
   expect(writes).toHaveLength(1);
@@ -45,7 +49,7 @@ test('NFC stamps are saved before finish and reply with a stamped ack, including
 test('NFC redemption sends verifiable proofs and commits once only after delivery', async () => {
   const initial = cardOf(4, 10);
   const { store, writes, raw } = setup(initial);
-  const exchange = await store.tap([link(20, 1, 'redeem')]);
+  const exchange = await store.tap([link(20, 1, 'redeem')], rewardOpen);
   const parsed = parseLink(cafe.scheme, exchange.reply!);
   if (parsed?.kind !== 'redeem') throw new Error('Expected redemption link');
   expect(value(verifyRedemption(parsed.request, { prior: null, spent: new Map() }, ctx)).spends).toEqual([{ nonceId: initial.events[0].nonceId, stamps: 4 }, { nonceId: initial.events[1].nonceId, stamps: 5 }]);
@@ -53,7 +57,7 @@ test('NFC redemption sends verifiable proofs and commits once only after deliver
   expect(writes).toHaveLength(0);
   expect(await exchange.finish(true)).toMatchObject({ kind: 'success', outcome: { kind: 'redeemed', via: 'nfc' } });
   expect(await exchange.finish(true)).toMatchObject({ kind: 'repeat', original: { kind: 'redeem' } });
-  const retry = await store.tap([link(20, 1, 'redeem')]);
+  const retry = await store.tap([link(20, 1, 'redeem')], rewardOpen);
   expect(retry.reply).toBeNull();
   expect(await retry.finish(true)).toMatchObject({ kind: 'repeat' });
   expect(store.getSnapshot().card.events.filter((e) => e.kind === 'redeem')).toHaveLength(1);
@@ -64,13 +68,35 @@ test('NFC redemption sends verifiable proofs and commits once only after deliver
 test('undelivered redemption changes neither persisted nor in-memory card and can be retried', async () => {
   const initial = cardOf(9);
   const { store, writes, raw } = setup(initial);
-  const exchange = await store.tap([link(20, 1, 'redeem')]);
+  const exchange = await store.tap([link(20, 1, 'redeem')], rewardOpen);
   expect(await exchange.finish(false)).toMatchObject({ kind: 'error', error: 'not-delivered', source: 'nfc' });
   expect(store.getSnapshot().card).toEqual(initial);
   expect(JSON.parse(raw.get(CARD_KEY)!)).toEqual(initial);
   expect(writes).toHaveLength(0);
-  const retry = await store.tap([link(20, 1, 'redeem')]);
+  const retry = await store.tap([link(20, 1, 'redeem')], rewardOpen);
   expect(await retry.finish(true)).toMatchObject({ kind: 'success', outcome: { kind: 'redeemed' } });
+});
+
+test('a redemption request sends no stamps unless the customer opened their reward', async () => {
+  const initial = cardOf(9);
+  const { store, writes } = setup(initial);
+  const closed = await store.tap([link(20, 1, 'redeem')], cardOnScreen);
+  expect(closed.reply).toBeNull();
+  expect(await closed.finish(true)).toMatchObject({ kind: 'error', error: 'reward-closed', source: 'nfc' });
+  expect(store.getSnapshot().card).toEqual(initial);
+  expect(writes).toHaveLength(0);
+
+  // The same request, once they open the reward, goes through.
+  const opened = await store.tap([link(20, 1, 'redeem')], rewardOpen);
+  expect(parseLink(cafe.scheme, opened.reply!)).toMatchObject({ kind: 'redeem' });
+  expect(await opened.finish(true)).toMatchObject({ kind: 'success', outcome: { kind: 'redeemed' } });
+});
+
+test('without a reward, a redemption request is answered with progress only', async () => {
+  const { store } = setup(cardOf(4));
+  const exchange = await store.tap([link(20, 1, 'redeem')], cardOnScreen);
+  expect(parseLink(cafe.scheme, exchange.reply!)).toMatchObject({ kind: 'ack', ack: { status: 'no-reward', progress: 4 } });
+  expect(await exchange.finish(true)).toMatchObject({ kind: 'error', error: 'no-reward' });
 });
 
 test.each(['qr', 'link'] as const)('redeem token via %s asks for another tap without spending', async (source) => {
@@ -141,7 +167,7 @@ test.each(['stamp', 'code', 'nfc'] as const)('save failure on %s leaves card unc
   storage.save = async () => { throw new Error('full'); };
   if (operation === 'code') expect(await store.redeemWithCode()).toEqual({ ok: false, error: 'storage' });
   else if (operation === 'nfc') {
-    const exchange = await store.tap([link(20, 1, 'redeem')]);
+    const exchange = await store.tap([link(20, 1, 'redeem')], rewardOpen);
     expect(await exchange.finish(true)).toMatchObject({ kind: 'error', error: 'storage' });
   } else expect(await store.submit([link()], 'qr')).toMatchObject({ kind: 'error', error: 'storage' });
   expect(store.getSnapshot().card).toEqual(initial);
@@ -163,7 +189,7 @@ test('concurrent stamp submissions are serialized and do not lose either stamp',
 
 test('simultaneous NFC completions spend and persist exactly once', async () => {
   const { store, writes, raw } = setup(cardOf(9));
-  const exchange = await store.tap([link(20, 1, 'redeem')]);
+  const exchange = await store.tap([link(20, 1, 'redeem')], rewardOpen);
   const events = await Promise.all([exchange.finish(true), exchange.finish(true)]);
   expect(events.map((e) => e.kind)).toEqual(['success', 'repeat']);
   expect(store.getSnapshot().card.events.filter((e) => e.kind === 'redeem')).toHaveLength(1);

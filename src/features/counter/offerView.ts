@@ -95,12 +95,12 @@ export function offerView(offer: ActiveOffer, now: number, ctx: OfferViewContext
     if (now - offer.readAt < ACK_GRACE_MS) return { ...base, stage: 'reading', title: 'Phone detected…', body: 'Hold still for a moment.' };
     return kind === 'stamp'
       ? { ...base, stage: 'delivered', title: 'Sent to their phone', body: 'Check their screen shows it, then tap Done.' }
-      : { ...base, stage: 'stalled', title: "Didn't hear back", body: 'Ask them to keep the app open and tap again, or scan their code.' };
+      : { ...base, stage: 'stalled', title: "Didn't hear back", body: `Ask them to open the ${reward} ticket in the app and tap again, or scan their code.` };
   }
 
   if (kind === 'redeem') {
     return offer.nfc
-      ? { ...base, stage: 'waiting', title: 'Tap phone here', body: `Or scan their ${reward} code: on their phone, tap the ${reward} ticket, then Show my code.` }
+      ? { ...base, stage: 'waiting', title: 'Tap phone here', body: `On their phone: tap the ${reward} ticket, then hold it here. Or scan their code.` }
       : { ...base, stage: 'scan', title: 'Scan their code', body: `On their phone: tap the ${reward} ticket, then Show my code.` };
   }
 

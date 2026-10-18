@@ -124,15 +124,31 @@ Later updates, without the Console:
 
 ## 7. Test with real phones before telling customers
 
-The emulator can't do NFC, so this part needs two real phones:
+The emulator can't do NFC, so this part needs two real phones.
+
+To test the Android phones before anything is on Play, install a local build on
+both: `adb install dist/corner-cafe-test.apk`, or copy the file to each phone and
+open it. Make the build with `bunx expo prebuild --platform android`, then
+`cd android && ./gradlew assembleRelease`, then copy
+`android/app/build/outputs/apk/release/app-release.apk` to
+`dist/corner-cafe-test.apk`. That build is signed with the debug key, so a phone
+must uninstall it before it can install the Play version. Uninstalling wipes the
+card, and on the counter phone it also wipes the spent-stamp record and the
+signing key. Set the counter phone up again afterwards (§6). iPhones need
+TestFlight (§5).
 
 - [ ] Android customer phone, app open: Give 1 stamp → hold phones back to
       back → both screens confirm ("Stamp added").
 - [ ] iPhone: Give 1 stamp → **Tap to collect** → hold the top of the iPhone to
       the back of the counter phone → both confirm.
 - [ ] Give 9 stamps in one go (+ button) → the card fills and the reward ticket appears.
-- [ ] **Redeem free drink** on the counter → customer taps → counter shows
-      **"Free drink verified"**. Only hand over a drink on that green screen.
+- [ ] **Redeem free drink** on the counter → customer taps their free drink
+      ticket, then holds the phones together (iPhone: **Tap the counter phone**
+      in the ticket) → counter shows **"Free drink verified"**. Only hand over a
+      drink on that green screen.
+- [ ] Same again, but the customer taps without opening the ticket: their phone
+      says "Open your free drink first", the reward stays on the card and the
+      counter keeps waiting. Opening the ticket and tapping again then works.
 - [ ] Redeem by code: customer taps the reward ticket → **Show my code**; counter
       → Redeem → **Scan their code** → verified. Scanning the same code again
       shows "Already used".
@@ -149,7 +165,8 @@ different places on different models, usually in the middle of the back.
 
 - **Stamps**: set the number of drinks → *Give N stamps* → customer taps (or
   *Show QR code instead*).
-- **Free drink**: *Redeem free drink* → customer taps, or *Scan their code*.
+- **Free drink**: *Redeem free drink* → customer opens their free drink ticket
+  and taps, or *Scan their code*.
   Only the green **verified** screen means the reward is real.
 - **Settings** (gear, staff PIN): change PIN, or stop using the phone as the counter.
 - **Changing rules**: edit `cafe.config.json` and ship an update. Existing stamps

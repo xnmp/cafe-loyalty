@@ -21,7 +21,9 @@ export type IntakeProblem =
   /** NFC: the redemption request didn't reach the counter phone. */
   | 'not-delivered'
   /** A redemption request arrived without an NFC session to answer it (e.g. the tap launched the app). */
-  | 'tap-again';
+  | 'tap-again'
+  /** NFC: the counter asked for a reward, but the customer hadn't opened one, so nothing was sent. */
+  | 'reward-closed';
 
 /** What the UI reacts to after a tap/scan. `id` lets the UI tell repeats apart. */
 export type IntakeEvent =
@@ -55,10 +57,19 @@ export interface CardStoreDeps {
   readonly keys: KeyRing;
 }
 
+export interface TapOptions {
+  /**
+   * The customer has opened a reward to use it. Only then does a redemption
+   * request get the card's stamps: a counter request replayed from another
+   * device can't take a reward off a card that's merely on screen.
+   */
+  readonly useReward: boolean;
+}
+
 export interface CardStore extends Store<CardState> {
   load(): Promise<void>;
-  /** NFC: handles what was read from the counter phone. */
-  tap(uris: readonly string[]): Promise<TapExchange>;
+  /** NFC: handles what was read from the counter phone. Stamps are taken whatever the options. */
+  tap(uris: readonly string[], options: TapOptions): Promise<TapExchange>;
   /** QR scans and deep links. */
   submit(uris: readonly string[], source: Exclude<IntakeSource, 'nfc'>): Promise<IntakeEvent>;
   /** Spends one reward on a code for the counter to scan, and returns the code. */
@@ -178,12 +189,16 @@ export function createCardStore(deps: CardStoreDeps): CardStore {
 
     load: () => serial(async () => void (await ensureLoaded())),
 
-    tap: (uris) =>
+    tap: (uris, { useReward }) =>
       serial(async (): Promise<TapExchange> => {
         const handled = await handle(uris, 'nfc');
         if (handled.kind === 'done') {
           publish(handled.event);
           return { reply: handled.reply, finish: async () => handled.event };
+        }
+        if (!useReward) {
+          const closed = publish(failure('reward-closed', 'nfc'));
+          return { reply: null, finish: async () => closed };
         }
         const { plan, trigger } = handled;
         return {
