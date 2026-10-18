@@ -35,7 +35,18 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // app.config.test.ts fails when a library adds one that's missing here.
     privacyManifests: {
       NSPrivacyTracking: false,
-      NSPrivacyCollectedDataTypes: [],
+      // Using a reward hands its stamps to the café's counter phone, which keeps
+      // which ones were spent so they can't be used twice: an anonymous record of
+      // one person's purchases. Matches App Privacy in App Store Connect
+      // (docs/app-store.md) and Play's data safety form.
+      NSPrivacyCollectedDataTypes: [
+        {
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePurchaseHistory',
+          NSPrivacyCollectedDataTypeLinked: false,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+        },
+      ],
       NSPrivacyAccessedAPITypes: [
         { NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryDiskSpace', NSPrivacyAccessedAPITypeReasons: ['85F4.1', 'E174.1'] },
         { NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryFileTimestamp', NSPrivacyAccessedAPITypeReasons: ['0A2A.1', '3B52.1', 'C617.1'] },

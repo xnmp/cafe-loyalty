@@ -24,6 +24,9 @@ Play Console parts for you. Just say which step you're on.
 **What's happening:** Google is checking the app. You don't need to press
 anything.
 
+(Google said no once, on 19 October, because of one wrong answer in a form.
+That's fixed and was sent back the same day, so the wait started again.)
+
 **How you'll know it's done:** you get an email from Google Play to the Gmail
 you use for the Play Console, saying the changes were approved. If you look at
 <https://play.google.com/console>, open the app and click **Publishing
@@ -58,6 +61,10 @@ and it will fix things.
 ---
 
 ## Step 2: get 12 or more people to install it (once Google says yes)
+
+**First, tell Claude "Google said yes".** It changes one privacy answer in the
+Play Console (that the counter phone keeps a nameless list of used stamps).
+Google checks that quickly; testing carries on meanwhile.
 
 **1. Put the sign up.** Open <https://xnmp.github.io/cafe-loyalty/testers/> and
 print it. It has two QR codes and tells people what to do. Stick it on the

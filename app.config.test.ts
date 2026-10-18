@@ -32,9 +32,16 @@ describe('iOS privacy manifest', () => {
     expect(missing).toEqual([]);
   });
 
-  test('says the app neither tracks nor collects data', () => {
+  test("declares only the counter phone's anonymous record of spent stamps, and no tracking", () => {
     expect(config.ios?.privacyManifests?.NSPrivacyTracking).toBe(false);
-    expect(config.ios?.privacyManifests?.NSPrivacyCollectedDataTypes).toEqual([]);
+    expect(config.ios?.privacyManifests?.NSPrivacyCollectedDataTypes).toEqual([
+      {
+        NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePurchaseHistory',
+        NSPrivacyCollectedDataTypeLinked: false,
+        NSPrivacyCollectedDataTypeTracking: false,
+        NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+      },
+    ]);
   });
 });
 

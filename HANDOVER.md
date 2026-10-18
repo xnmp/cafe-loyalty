@@ -48,7 +48,11 @@ production is [NEXT_STEP.md](NEXT_STEP.md).
   1.0.1 (29872142) for the owner's email. The closed test (1.0.1, Australia,
   the testers Google Group, feedback to the support group) was sent for review
   with the store listing and app content, rejected over the financial features
-  declaration (see Gotchas), and resent on 2026-10-19.
+  declaration (see Gotchas), and resent on 2026-10-19. **Once it's approved,
+  update Data safety** to declare purchase history (`docs/RELEASE.md` §4 has
+  the answers); the owner decided on 2026-10-19 to declare the counter's
+  spent-stamp registry on both stores, and the privacy policy and iOS
+  manifest already do.
   `docs/RELEASE.md` §4 has the state and the road to production (12 testers for
   14 days). Bundles are built locally with `scripts/build-play-bundle.sh`, not
   EAS.

@@ -65,8 +65,13 @@ first set its remote version above the last upload:
 The Console app is **Eastern Concourse Cafe** (`md.chong.cafecard`). Done so far:
 
 - **App content**: every declaration is filed. Privacy policy (§2); data safety
-  says no data is collected or shared (the app makes no network requests); no ads
-  or advertising ID; content rating (IARC); 13 and over; financial features:
+  says no data is collected or shared (the app makes no network requests).
+  **To change after the closed test is approved:** Financial info → Purchase
+  history: collected, not shared, not ephemeral, required; purposes App
+  functionality and Fraud prevention, security, and compliance. That's the
+  counter's spent-stamp registry, and matches App Store privacy and the
+  privacy policy. No ads or advertising ID; content rating (IARC); 13 and
+  over; financial features:
   **none**. Don't tick *Rewards, points, frequent flier miles*: it sits under
   *Payments and transfers*, and Google rejected the first review for it,
   because financial apps need an organization account. The stamps have no cash
@@ -148,8 +153,11 @@ step-by-step is [`docs/app-store.md`](app-store.md).
   `e2e/app-store-screenshots.yaml`; it stamps with a throwaway key made in the
   run, so no secret is involved. Never screenshot a **Show my code** screen:
   that code is a real free drink anyone could scan off the listing.
-- **Privacy:** App Privacy is **Data Not Collected**. The app's privacy
-  manifest (`app.config.ts`) repeats every reason its libraries declare;
+- **Privacy:** App Privacy is **Purchase History, not linked, App
+  Functionality, no tracking**: redeeming hands stamps to the counter phone,
+  whose spent-stamp registry keeps them, an anonymous record of one person's
+  purchases. The privacy manifest (`app.config.ts`) declares the same, and
+  repeats every required-reason API its libraries declare;
   `app.config.test.ts` fails when an upgrade adds one.
 - **App Review:** reviewers don't have the counter phone. Attach a 30-second
   screen recording of an iPhone collecting a stamp at the counter, and paste

@@ -110,12 +110,21 @@ privacy policy link, category and age rating. These are the bits it can't do:
 
 **App Privacy** (left menu):
 
-1. Press **Get Started**, then choose **No, we do not collect data from this
-   app**, and save.
-2. Press **Publish**.
+1. Press **Get Started**, choose **Yes, we collect data from this app**, and
+   press **Next**.
+2. Tick only **Purchase History** (under **Purchases**), and press **Save**.
+3. Next to **Purchase History**, press **Set Up**, and answer:
+   - How it's used: tick only **App Functionality**. Press **Next**.
+   - Linked to the user's identity? **No**. Press **Next**.
+   - Used for tracking? **No**. Press **Save**.
+4. Press **Publish** at the top right.
 
-The app has no accounts or servers, and *Report a problem* only opens the
-customer's own email app, so "no data collected" is the honest answer.
+The App Store page will then say **Data Not Linked to You: Purchases**. Why:
+when someone uses a free drink, the counter phone keeps a list of which stamps
+were used, so they can't be used twice. The list doesn't say who, but it does
+show one person bought those drinks. Nothing else leaves the phone: no
+accounts, no servers, and *Report a problem* only opens the customer's own
+email app.
 
 **Pricing and Availability** (left menu):
 
