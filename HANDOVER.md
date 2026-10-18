@@ -22,7 +22,7 @@ production is [NEXT_STEP.md](NEXT_STEP.md).
 - The card screen fits without scrolling on small phones (`src/features/card/fit.ts`):
   the stamps shrink first, then the header goes compact, and past 36 dp stamps it
   scrolls. Checked on a 360×760 dp emulator with 3-button navigation.
-- `bun run test` (33 suites, ~835 tests), `bunx tsc --noEmit` and
+- `bun run test` (34 suites, ~840 tests), `bunx tsc --noEmit` and
   `bunx eslint . --quiet` all pass.
 - Verified on an Android emulator (no NFC): deep-link stamps, unlock, reward
   ticket → redeem sheet → code, code re-shown from History, the counter's
@@ -47,7 +47,8 @@ production is [NEXT_STEP.md](NEXT_STEP.md).
   complete (graphics declared as AI-made). Internal testing is live with
   1.0.1 (29872142) for the owner's email. The closed test (1.0.1, Australia,
   the testers Google Group, feedback to the support group) was sent for review
-  on 2026-10-19 with the store listing and app content.
+  with the store listing and app content, rejected over the financial features
+  declaration (see Gotchas), and resent on 2026-10-19.
   `docs/RELEASE.md` §4 has the state and the road to production (12 testers for
   14 days). Bundles are built locally with `scripts/build-play-bundle.sh`, not
   EAS.
@@ -68,6 +69,10 @@ production is [NEXT_STEP.md](NEXT_STEP.md).
   On Android they intermittently leave views stuck invisible (opacity 0). Use
   `Appear` from `src/ui/motion.tsx` or explicit shared values (see
   `src/ui/Sheet.tsx`). Reproduced roughly 1 in 6 opens before the fix, 0 in 50 after.
+- **Play's Financial features declaration must stay "none".** Ticking
+  *Rewards, points, frequent flier miles* got the first closed-test review
+  rejected (2026-10-19, "Play Console Requirements": financial features need an
+  organization account). Changed to none and resent the same day.
 - Reanimated reads reduced motion once per process (`transition_animation_scale`
   = 0); `uiautomator dump` on the emulator can flip animation scales to 0.
 - Whether an NFC tap may spend a reward is decided only in the card store

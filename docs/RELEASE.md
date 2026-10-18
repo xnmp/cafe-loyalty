@@ -66,8 +66,11 @@ The Console app is **Eastern Concourse Cafe** (`md.chong.cafecard`). Done so far
 
 - **App content**: every declaration is filed. Privacy policy (§2); data safety
   says no data is collected or shared (the app makes no network requests); no ads
-  or advertising ID; content rating (IARC); 13 and over; financial features say
-  *rewards/loyalty* only.
+  or advertising ID; content rating (IARC); 13 and over; financial features:
+  **none**. Don't tick *Rewards, points, frequent flier miles*: it sits under
+  *Payments and transfers*, and Google rejected the first review for it,
+  because financial apps need an organization account. The stamps have no cash
+  value and can't be bought, sold or transferred.
 - **App access**: reviewers have no counter phone, so the instructions point them
   at the **demo staff code**, <https://xnmp.github.io/cafe-loyalty/review/>
   (regenerate with `bun run setup-cafe demo`). It turns any phone into a counter
@@ -152,7 +155,9 @@ step-by-step is [`docs/app-store.md`](app-store.md).
   screen recording of an iPhone collecting a stamp at the counter, and paste
   the notes from `docs/app-store.md` (they point to the demo staff code at
   `docs/review/`). Apple can ask for a fresh video with later submissions.
-- **Updates:** bump `version` in `app.config.ts`; the build number goes up by
+- **Updates:** bump `version` in `app.config.ts` and `apple.version` in
+  `store.config.json` (a test fails if they differ; `metadata:push` writes the
+  listing onto that version and creates it). The build number goes up by
   itself (`appVersionSource: remote`). Run `bun run ios-release`, then **Add
   for Review** on the new version in App Store Connect.
 

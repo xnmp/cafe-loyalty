@@ -1,6 +1,7 @@
 {
   "configVersion": 0,
   "apple": {
+    "version": "1.0.1",
     "categories": ["FOOD_AND_DRINK", "LIFESTYLE"],
     "info": {
       "en-AU": {

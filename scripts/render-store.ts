@@ -11,6 +11,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { stamp } from './lib/brandArt';
+import { rgbPng } from './lib/png';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const cafe = JSON.parse(readFileSync(join(root, 'cafe.config.json'), 'utf8'));
@@ -121,7 +122,11 @@ function featureGraphic(): string {
 
 const icon512 = () => doc(512, 512, `<rect width="512" height="512" fill="${theme.accent}"/>${stamp({ size: 512, r: 180, fill: theme.paper, ink: theme.accent, ring: theme.accent, speckle: theme.accent })}`);
 
-const render = (source: string) => new Resvg(source, { fitTo: { mode: 'original' }, font: { fontFiles, loadSystemFonts: false, defaultFontFamily: 'Fraunces' } }).render().asPng();
+// Both stores want screenshots and the feature graphic without an alpha channel.
+const render = (source: string) => {
+  const image = new Resvg(source, { fitTo: { mode: 'original' }, font: { fontFiles, loadSystemFonts: false, defaultFontFamily: 'Fraunces' } }).render();
+  return rgbPng(image.pixels, image.width, image.height);
+};
 
 const write = (file: string, source: string) => {
   writeFileSync(join(out, file), render(source));

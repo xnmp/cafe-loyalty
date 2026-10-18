@@ -17,6 +17,7 @@ export function RewardTicket({ count, rewardName, onPress }: { count: number; re
       style={[styles.ticket, { backgroundColor: color.accent }, elevation(theme, 1)]}
       accessibilityRole="button"
       accessibilityLabel={`${count} ${rewardName}${count > 1 ? 's' : ''} ready. Open when you order to use it.`}
+      testID="reward-ticket"
     >
       <View style={[styles.notch, { left: -notch / 2, width: notch, height: notch, borderRadius: notch / 2, backgroundColor: color.background }]} />
       <View style={[styles.notch, { right: -notch / 2, width: notch, height: notch, borderRadius: notch / 2, backgroundColor: color.background }]} />

@@ -98,8 +98,7 @@ privacy policy link, category and age rating. These are the bits it can't do:
    `/home/chong/Repos/cafe-loyalty/docs/store/app-store/`, in order (01, 02, 03,
    04, 07).
 2. **Build:** press **Add Build** and pick the one that's there. If none shows
-   up, the version number may say 1.0 instead of 1.0.1. Click it, change it to
-   **1.0.1** and try again.
+   up, Apple is still processing it: wait half an hour and reload the page.
 3. **Copyright:** type `2026` and your full name, for example `2026 Jane Citizen`.
 4. **App Review Information:**
    - Untick **Sign-in required**.

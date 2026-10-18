@@ -54,8 +54,10 @@ appId: md.chong.cafecard
 - waitForAnimationToEnd
 - takeScreenshot: ${OUT}03-unlocked
 - tapOn: "Lovely"
+# The ticket's accessibility label replaces its visible text, so find it by ID.
 - extendedWaitUntil:
-    visible: "Free drink ready"
+    visible:
+      id: "reward-ticket"
     timeout: 20000
 - waitForAnimationToEnd
 - takeScreenshot: ${OUT}04-reward-ready

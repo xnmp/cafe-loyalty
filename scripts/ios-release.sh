@@ -23,10 +23,16 @@ fi
 echo "== 2/4 Link this project to Expo (first run only)"
 project_id="$(bun -p "require('./cafe.config.json').easProjectId || ''")"
 if [[ -z "$project_id" ]]; then
-  # app.config.ts is code, so eas init can't save the project ID into it: it prints the ID instead.
-  output="$(eas init --non-interactive --force 2>&1 || true)"
+  # The project belongs to the signed-in user's own account (whoami's first line), not
+  # whichever organisation EAS would pick on its own.
+  owner="$(eas whoami 2>/dev/null | sed -n 1p | sed 's/\x1b\[[0-9;]*m//g')"
+  # app.config.ts is code, so eas init can't save the project ID into it. It fails
+  # and prints the setting to add instead, {"extra": {"eas": {"projectId": "..."}}},
+  # so only that line counts: its errors can contain other IDs, such as request IDs.
+  output="$(eas init --non-interactive --force --account "$owner" 2>&1 || true)"
   printf '%s\n' "$output"
-  project_id="$(grep -oE "$uuid" <<<"$output" | tail -1 || true)"
+  # shellcheck disable=SC2001 # Stripping colour codes needs a regex.
+  project_id="$(sed 's/\x1b\[[0-9;]*m//g' <<<"$output" | grep -oE "\"projectId\": \"$uuid\"" | grep -oE "$uuid" | tail -1 || true)"
   if [[ -z "$project_id" ]]; then
     echo "Let's do that step by hand. Answer yes to creating the project."
     eas init || true

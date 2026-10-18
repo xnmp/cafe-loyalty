@@ -3,6 +3,7 @@ import type { ConfigContext } from 'expo/config';
 import { globSync, readFileSync } from 'node:fs';
 
 import appConfig from './app.config';
+import storeConfig from './store.config.json';
 
 /** Each API type and its reasons, from a PrivacyInfo.xcprivacy file's innermost dicts. */
 function declaredReasons(plist: string): [string, string[]][] {
@@ -34,6 +35,14 @@ describe('iOS privacy manifest', () => {
   test('says the app neither tracks nor collects data', () => {
     expect(config.ios?.privacyManifests?.NSPrivacyTracking).toBe(false);
     expect(config.ios?.privacyManifests?.NSPrivacyCollectedDataTypes).toEqual([]);
+  });
+});
+
+describe('App Store listing', () => {
+  // eas metadata:push writes the listing onto this version, creating it if need be.
+  // Left behind after a release, it would edit the version that's already live.
+  test('is for the version the app is built as', () => {
+    expect(storeConfig.apple.version).toBe(appConfig({ config: {} } as ConfigContext).version);
   });
 });
 
