@@ -1,101 +1,175 @@
-# Next steps to get Eastern Concourse onto Google Play
+# What happens next, in plain English
 
-Where it stands (19 Oct 2026):
+## The big picture
 
-- **Internal testing is live with 1.0.1.** Only people on the internal email list
-  can install it (just you so far).
-- **The closed test has been sent to Google for review**, together with the store
-  listing and app content. Google says reviews usually finish within 7 days, and
-  it emails you when it's done. The closed test goes live by itself once approved
-  (managed publishing is off).
-- **iPhone isn't started.** See the end.
+Google doesn't let a brand-new app go public on Google Play straight away. First
+you have to show that real people have used it. There are five steps, and most
+of the time you're just waiting:
 
-Google won't let the app go public (production) until a closed test has had **at
-least 12 testers opted in for the last 14 days in a row**. The steps below get
-you there.
+| Step | What happens | Roughly how long |
+| --- | --- | --- |
+| 1 | Google checks the test version of the app | up to 7 days, **you are here** |
+| 2 | You get 12 or more people to install the test version | a day or two |
+| 3 | Those people keep it on their phones | 14 days |
+| 4 | You ask Google to let you go public, and Google checks again | up to 7 days |
+| 5 | You press publish, and anyone can find it on Google Play | a day or so |
 
-## 1. This week, while Google reviews
+All up, that's about 4 to 5 weeks. You can ask Claude to do any of the
+Play Console parts for you. Just say which step you're on.
 
-- [ ] **Line up testers: aim for 15–20, not 12.** If someone leaves the test and
-      the count drops below 12, the 14 days may have to start again. Testers
-      need an **Android** phone signed in to a Google account. iPhone users
-      can't be Play testers.
-      - You don't need to collect anyone's email address. Each person joins the
-        Google Group themselves, with the Google account that's on their phone.
-      - Ask the café owners to recruit regulars and staff, and recruit friends
-        and family yourself.
-- [ ] **Add the café owners to the support group**, so they get problem reports:
-      <https://groups.google.com/g/eastern-concourse-cafe-support> → People →
-      Members → Add members.
-- [ ] **Optional: let the owners install it now**, before the review finishes.
-      Play Console → Test and release → Testing → Internal testing → Testers →
-      *Eastern Concourse internal testers* → add their Gmail addresses → Save.
-      Then send them the **Join on the web** link from that page.
-      - Internal testers don't count towards the 12. The owners should join the
-        closed test too, once it's live (step 2).
-- [ ] **Set up the counter phone**, the café's Android phone with NFC.
-      - Install the app, either from internal testing (put that phone's Google
-        account on the internal list) or from the closed test once it's live.
-      - Then follow `docs/RELEASE.md` §6: About (ⓘ) → hold the version number for
-        2 seconds → Scan staff code → scan
-        `/home/chong/Repos/cafe-loyalty/cafe-secrets/staff-key-3.html` from your
-        laptop screen → choose a PIN.
-- [ ] **Test with two real phones** using the checklist in `docs/RELEASE.md` §7.
-      NFC can't be tested on an emulator, so this hasn't been done yet.
-- [ ] **Uninstall the sideloaded test app** (`dist/test.apk`) from any phone you
-      put it on before installing from Play. Play won't install over it, and
-      uninstalling wipes that phone's card.
-- [ ] **Back up `/home/chong/Repos/cafe-loyalty/cafe-secrets/` offline**, for
-      example to a USB stick or a password manager. Every future Play upload must
-      be signed with the key in it, and the counter phone's staff code comes
-      from it.
+---
 
-## 2. When Google approves the closed test
+## Step 1: wait for Google's email (up to 7 days)
 
-You'll get an email, and Publishing overview stops saying "Changes in review".
+**What's happening:** Google is checking the app. You don't need to press
+anything.
 
-- [ ] **Send each tester these two links, in order**, or print the counter
-      sign with both as QR codes: <https://xnmp.github.io/cafe-loyalty/testers/>
-      (`bun run render-tester-sign <group URL>` regenerates it).
-      1. **Join the group:** <https://groups.google.com/g/eastern-concourse-cafe-testers>
-         (with the Google account on their phone)
-      2. **Opt in, then install:** <https://play.google.com/apps/testing/md.chong.cafecard>
-         → *Become a tester* → *Download it on Google Play*.
-      - Joining the group alone isn't enough. Only people who open link 2 and
-        opt in count.
-- [ ] **Ask testers to actually use it:** collect stamps at the café, and send
-      feedback through *Report a problem* in About. Google's production
-      application asks how testers used the app and what you learned. Real
-      use and a few reports make that easy to answer.
-- [ ] **Check progress** in the Play Console Dashboard, which shows how far
-      you are towards production access. Once 12 or more have opted in, leave
-      it for **14 days**. Don't pause or end the
-      closed test.
+**How you'll know it's done:** you get an email from Google Play to the Gmail
+you use for the Play Console, saying the changes were approved. If you look at
+<https://play.google.com/console>, open the app and click **Publishing
+overview**, it will no longer say "Changes in review".
 
-## 3. After 14 days: apply for production
+**If Google says no:** the email says why. Forward it to Claude (paste it in)
+and it will fix things.
 
-- [ ] Play Console → **Dashboard** → **Apply for production**. It's a short
-      questionnaire about the closed test: how you found testers, how they used
-      the app, and what feedback you got and changed. Google says to allow up
-      to 7 days for a decision.
-- [ ] Once approved: **Test and release → Production → Create new release** →
-      *Add from library* (the latest bundle) → Countries: Australia → Save →
-      **Publishing overview → Send for review**.
-- [ ] After that review, anyone in Australia can find **Eastern Concourse
-      Cafe** on Google Play. Tell customers. The closed-test links can stay up.
+**Things to do while you wait (optional, but they save time later):**
 
-## If something needs fixing along the way
+1. **Back up the secret folder.** Copy the folder
+   `/home/chong/Repos/cafe-loyalty/cafe-secrets/` to a USB stick or into your
+   password manager.
+   - Why: it holds the key that proves new versions of the app come from you,
+     and the code that turns the café's phone into the stamp-giving phone. If
+     your laptop dies without a backup, you can never update the app again.
+2. **Tell the café owners the plan.** They need to find about **20 people
+   with Android phones** who'd install the test version: staff, regulars,
+   friends, family.
+   - Why 20 when Google asks for 12: some people drop out.
+   - iPhones can't join, and nobody needs to hand over an email address.
+3. **Make sure the owners get problem reports.** Ask for their email
+   addresses, then:
+   1. Go to <https://groups.google.com/g/eastern-concourse-cafe-support>.
+   2. Click **People** on the left, then **Members**.
+   3. Click **Invite members** (it may say **Add members**), type their emails,
+      and send. If they get an invitation email, they click **Accept**.
 
-Bump `version` in `app.config.ts`, run `scripts/build-play-bundle.sh`, upload
-the new `.aab` to internal testing, then add it to the closed test. The 14 days
-count testers staying opted in, so an update shouldn't reset them. `docs/RELEASE.md` §4 has the details, including how
-to stop dragging bundles in by hand (a Play service account).
+   Now when a customer presses *Report a problem* in the app, the owners get
+   the email too.
 
-## iPhone (any time, separate from all of the above)
+---
 
-Needs an Apple Developer account (US$99 a year). Then:
-`bunx eas-cli login` → `bunx eas-cli init` → `bunx eas-cli build -p ios --profile production`
-→ `bunx eas-cli submit -p ios --latest` → fill in App Store Connect and submit.
-`docs/RELEASE.md` §5 has the App Store fields and what to tell Apple's
-reviewers. Until then, iPhone customers can't install the app. The counter
-phone itself must be Android either way.
+## Step 2: get 12 or more people to install it (once Google says yes)
+
+**1. Put the sign up.** Open <https://xnmp.github.io/cafe-loyalty/testers/> and
+print it. It has two QR codes and tells people what to do. Stick it on the
+counter, or send the two links on the sign to people by text message.
+
+**2. What each person does on their Android phone** (the sign says the same):
+
+1. Scan the **first** QR code, or open
+   <https://groups.google.com/g/eastern-concourse-cafe-testers>.
+2. Check it's signed in with the Google account their Play Store uses,
+   usually their Gmail. Press **Join group**.
+3. Scan the **second** QR code, or open
+   <https://play.google.com/apps/testing/md.chong.cafecard>.
+4. Press **Become a tester**.
+5. Press **Download it on Google Play**, then **Install**.
+
+That's all. They don't need to tell you anything. Google counts them
+automatically.
+
+**3. Do it yourself and get the owners to do it,** on your own Android phones.
+You count towards the 12 too.
+
+- If you installed the test file `test.apk` on a phone earlier, uninstall that
+  app first. Play won't install over it.
+
+**4. Set up the café's phone as the stamp-giving "counter phone".** This must
+be an Android phone with NFC.
+
+1. Install the app on it the same way: the two links above, signed in with the
+   café's Google account.
+2. On your laptop, open
+   `/home/chong/Repos/cafe-loyalty/cafe-secrets/staff-key-3.html` in a browser.
+   It shows a QR code. Keep this file private.
+3. On the café phone, open the app and tap the round **ⓘ** button at the top.
+4. Press and hold the version number at the bottom for 2 seconds.
+5. Tap **Scan staff code**, point the phone at the QR code on your laptop, and
+   choose a 4-digit staff PIN.
+6. Leave the phone on charge with NFC turned on. Customers will tap the back
+   of their phone against the back of this one.
+
+**5. Try it once with two real phones** before telling customers.
+
+1. On the counter phone, give 1 stamp.
+2. Hold a customer phone (with the app open) back to back with it.
+3. Both screens should say the stamp was added.
+
+The full checklist is in `docs/RELEASE.md` section 7. If anything doesn't work,
+tell Claude what happened.
+
+---
+
+## Step 3: wait 14 days
+
+**What's happening:** Google needs at least 12 people to keep the test version
+for 14 days in a row. The clock starts once 12 have joined.
+
+**What you do:**
+
+- Nothing in the Play Console.
+- Ask testers to actually use it: collect stamps when they buy coffee, and
+  press *Report a problem* (in the ⓘ screen) if something's wrong or they
+  have an idea.
+- Ask them not to uninstall it or leave the test. If the number drops below
+  12, the 14 days may start again.
+
+**How to check the count:** the Play Console **Dashboard** shows how close you
+are to being allowed to go public. Or ask Claude to look.
+
+---
+
+## Step 4: ask Google to go public (after the 14 days)
+
+1. Go to <https://play.google.com/console>, open the app, and click **Dashboard**.
+2. Find **Apply for production** and answer the questions. They ask who
+   tested, how, and what you learned. Honest, simple answers are fine, for
+   example: "Café customers and staff, recruited with a sign at the counter.
+   They collected stamps for two weeks and reported problems through the
+   app."
+3. Wait for Google's email, up to 7 days.
+
+Or tell Claude "apply for production" and it will go through it with you.
+
+---
+
+## Step 5: publish it for everyone
+
+Tell Claude "publish to production", and it will do this in the Play Console
+for you. If you'd rather do it yourself:
+
+1. Click **Test and release**, then **Production**, then **Create new release**.
+2. Click **Add from library**, tick the newest version, and click **Add to release**.
+3. Click **Next**, then **Save**.
+4. Click **Publishing overview**, then the **Submit … for review** button, then
+   **Send changes for review**.
+
+After one more short check, anyone in Australia can search **Eastern
+Concourse Cafe** on Google Play and install it.
+
+---
+
+## Other things you might wonder about
+
+- **iPhones:** not yet. It needs an Apple Developer account (US$99 a year).
+  When you have one, tell Claude and it will walk you through it. The café's
+  counter phone has to be Android either way.
+- **If the app needs a fix later:** tell Claude what's wrong. It makes the new
+  version, and your only job is dragging one file into the Play Console page
+  it opens.
+- **Words you'll see in the Play Console:**
+  - **Internal testing:** a private copy only you can install. It's already
+    working.
+  - **Closed testing:** the test version that people join with the two
+    links. This is the one the 12 testers need.
+  - **Production:** the public version anyone can find.
+  - **Opt in:** pressing *Become a tester*.
