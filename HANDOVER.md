@@ -61,6 +61,11 @@ bun run render-store                    # Play graphics from docs/store/raw/
 bun run setup-cafe check|new-key|retire <id>|print
 ```
 
+iOS compile check without a Mac: GitHub → xnmp/cafe-loyalty (private) →
+Actions → **iOS simulator build** → Run workflow (`gh workflow run
+ios-simulator.yml`). It builds unsigned for the simulator, launches the app
+and uploads screenshots. The simulator has no NFC.
+
 HCE unit tests (from `android/` after `bunx expo prebuild --platform android`):
 `./gradlew :cafe-hce:testDebugUnitTest`.
 
