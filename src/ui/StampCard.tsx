@@ -183,9 +183,15 @@ export interface StampCardProps {
   /** Light up the reward slot (card complete). */
   rewardLit: boolean;
   caption: string;
+  /** Stamp diameter; defaults to the largest the card's width allows. */
+  stampSize?: number;
+  /** The grid's width once laid out, for callers that size the stamps themselves. */
+  onGridWidth?: (width: number) => void;
 }
 
 const REWARD = -1;
+const MAX_STAMP_SIZE = 64;
+const STAMP_GAP = space.xs;
 
 const chunk = <T,>(items: readonly T[], size: number): T[][] =>
   Array.from({ length: Math.ceil(items.length / size) }, (_, i) => items.slice(i * size, i * size + size));
@@ -196,15 +202,21 @@ export function gridFor(slots: number): { rows: number; cols: number } {
   return { rows, cols: Math.ceil(slots / rows) };
 }
 
-export function StampCard({ cafeName, stampsPerReward, filled, staggerFrom, rewardLit, caption }: StampCardProps) {
+/** The largest stamp whose row still fits `gridWidth`; 0 before the grid is laid out. */
+export function stampSizeForWidth(gridWidth: number, cols: number): number {
+  return gridWidth > 0 ? Math.max(0, Math.min(MAX_STAMP_SIZE, Math.floor((gridWidth - STAMP_GAP * (cols - 1) - 1) / cols))) : 0;
+}
+
+export function StampCard({ cafeName, stampsPerReward, filled, staggerFrom, rewardLit, caption, stampSize, onGridWidth }: StampCardProps) {
   const theme = useTheme();
   const { color } = theme;
   // Measured on the grid itself so borders/padding can't make a row overflow and wrap.
   const [gridWidth, setGridWidth] = useState(0);
   const total = stampsPerReward + 1;
   const { cols } = gridFor(total);
-  const gap = space.xs;
-  const size = gridWidth > 0 ? Math.min(64, Math.floor((gridWidth - gap * (cols - 1) - 1) / cols)) : 0;
+  const gap = STAMP_GAP;
+  const widthLimit = stampSizeForWidth(gridWidth, cols);
+  const size = Math.min(widthLimit, stampSize ?? widthLimit);
 
   return (
     <View
@@ -218,7 +230,7 @@ export function StampCard({ cafeName, stampsPerReward, filled, staggerFrom, rewa
           <AppText variant="overline" tone="muted">
             Loyalty card
           </AppText>
-          <AppText style={{ fontFamily: font.display, fontSize: 22, lineHeight: 28, marginTop: 2 }} numberOfLines={1}>
+          <AppText style={{ fontFamily: font.display, fontSize: 22, lineHeight: 28, marginTop: 2 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
             {cafeName}
           </AppText>
         </View>
@@ -227,7 +239,15 @@ export function StampCard({ cafeName, stampsPerReward, filled, staggerFrom, rewa
         </View>
       </View>
 
-      <View style={styles.gridFrame} onLayout={(e: LayoutChangeEvent) => setGridWidth(e.nativeEvent.layout.width)}>
+      {/* Empty until its width is known. A placeholder could be exactly as tall as the
+          grid that replaces it, and then no layout event would report the grid's height. */}
+      <View
+        style={styles.gridFrame}
+        onLayout={(e: LayoutChangeEvent) => {
+          setGridWidth(e.nativeEvent.layout.width);
+          onGridWidth?.(e.nativeEvent.layout.width);
+        }}
+      >
       {size > 0 ? (
         <View style={{ gap: space.sm }}>
           {chunk([...Array.from({ length: stampsPerReward }, (_, i) => i), REWARD], cols).map((row, r) => (
@@ -242,9 +262,7 @@ export function StampCard({ cafeName, stampsPerReward, filled, staggerFrom, rewa
             </View>
           ))}
         </View>
-      ) : (
-        <View style={{ height: 140 }} />
-      )}
+      ) : null}
       </View>
 
       <View style={[styles.perforation, { borderColor: color.line }]} />
@@ -263,7 +281,7 @@ const styles = StyleSheet.create({
     paddingBottom: space.lg,
     overflow: 'visible',
   },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: space.xl, marginBottom: space.lg },
+  header: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.xl, marginBottom: space.md },
   seal: { width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   gridFrame: { marginHorizontal: space.xl },
   row: { flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-start' },

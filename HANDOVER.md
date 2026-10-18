@@ -10,7 +10,18 @@ User-facing docs: [README](README.md), [release guide](docs/RELEASE.md),
   phone → iOS/Android customers), QR fallback both ways, counter-verified
   rewards with a SQLite spent-stamp registry, history, about, staff setup with
   PIN, counter settings.
-- `bun run test` (29 suites, ~750 tests), `bunx tsc --noEmit` and
+- 1.0.1 added **Report a problem** (About, counter Settings, and the "couldn't
+  open your card" screen). It opens the reporter's own email app with the
+  message, app version and phone filled in, plus an optional screenshot from
+  the system photo picker, so the app still makes no network requests. Reports
+  go to `supportEmail` in `cafe.config.json`: the Google Group
+  eastern-concourse-cafe-support@googlegroups.com (anyone can post; only
+  members read). It's also the public contact on Play and in the privacy policy.
+  Add the café owners as members so they get reports.
+- The card screen fits without scrolling on small phones (`src/features/card/fit.ts`):
+  the stamps shrink first, then the header goes compact, and past 36 dp stamps it
+  scrolls. Checked on a 360×760 dp emulator with 3-button navigation.
+- `bun run test` (31 suites, ~815 tests), `bunx tsc --noEmit` and
   `bunx eslint . --quiet` all pass.
 - Verified on an Android emulator (no NFC): deep-link stamps, unlock, reward
   ticket → redeem sheet → code, code re-shown from History, the counter's
@@ -32,8 +43,10 @@ User-facing docs: [README](README.md), [release guide](docs/RELEASE.md),
   (`docs/review/`). It is never trusted: config validation, `keyRingOf` and
   the key helpers all refuse it.
 - Google Play: every App content declaration is filed, and the store listing is
-  complete. Internal testing is set up for the owner's email. The closed test,
-  with the Google Group as testers, still has to be sent for review.
+  complete (graphics declared as AI-made). Internal testing is live for the
+  owner's email (1.0.0); 1.0.1 goes to internal next. The closed test, with
+  the testers Google Group, has a draft release and still has to be sent for
+  review from Publishing overview.
   `docs/RELEASE.md` §4 has the state and the road to production (12 testers for
   14 days). Bundles are built locally with `scripts/build-play-bundle.sh`, not
   EAS.

@@ -16,7 +16,7 @@ export function RewardTicket({ count, rewardName, onPress }: { count: number; re
       onPress={onPress}
       style={[styles.ticket, { backgroundColor: color.accent }, elevation(theme, 1)]}
       accessibilityRole="button"
-      accessibilityLabel={`${count} ${rewardName}${count > 1 ? 's' : ''} ready. Ask at the counter and tap your phone, or open to show your code.`}
+      accessibilityLabel={`${count} ${rewardName}${count > 1 ? 's' : ''} ready. Open when you order to use it.`}
     >
       <View style={[styles.notch, { left: -notch / 2, width: notch, height: notch, borderRadius: notch / 2, backgroundColor: color.background }]} />
       <View style={[styles.notch, { right: -notch / 2, width: notch, height: notch, borderRadius: notch / 2, backgroundColor: color.background }]} />
@@ -24,11 +24,12 @@ export function RewardTicket({ count, rewardName, onPress }: { count: number; re
         <Gift size={24} color={color.onAccent} strokeWidth={2} />
       </View>
       <View style={{ flex: 1 }}>
+        {/* Short enough for one line each on a small phone; the stub shows how many. */}
         <AppText variant="heading" tone="onAccent">
-          {count > 1 ? `${count} ${rewardName}s ready` : `Your ${rewardName} is ready`}
+          {`${rewardName.charAt(0).toUpperCase()}${rewardName.slice(1)}${count > 1 ? 's' : ''} ready`}
         </AppText>
         <AppText variant="caption" tone="onAccent" style={{ opacity: 0.85, marginTop: 2 }}>
-          Ask at the counter and tap your phone — or tap here for your code.
+          Open when you order
         </AppText>
       </View>
       <View style={[styles.stub, { borderColor: withAlpha(color.onAccent, 0.35) }]}>

@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
-import { History, Info, Nfc, ScanLine, Smartphone } from 'lucide-react-native';
-import { useCallback, useMemo } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { History, Info, MessageSquareWarning, Nfc, ScanLine, Smartphone } from 'lucide-react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, useWindowDimensions, View, type LayoutChangeEvent } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { cafe } from '../../config';
 import { summarize } from '../../domain/card';
@@ -10,12 +11,13 @@ import { useStores } from '../../state/AppProviders';
 import { pausesReader } from '../../state/rewardUse';
 import { useStore } from '../../state/store';
 import { AppText, Button, IconButton, Screen } from '../../ui/primitives';
-import { Appear, NfcPulse } from '../../ui/motion';
+import { NfcPulse } from '../../ui/motion';
 import { RewardTicket } from '../../ui/RewardTicket';
-import { StampCard } from '../../ui/StampCard';
+import { gridFor, StampCard, stampSizeForWidth } from '../../ui/StampCard';
 import { space, useTheme, withAlpha } from '../../ui/theme';
 import { describe, progressLine } from './feedback';
 import { FeedbackSheet } from './FeedbackSheet';
+import { fitCard, headerHeightsAt, rememberHeaderHeight, type FitInput, type HeaderMemo } from './fit';
 import { RedeemSheet } from './RedeemSheet';
 import { useTapToCollect, type TapController } from './useTapToCollect';
 
@@ -41,6 +43,31 @@ export function CardScreen() {
     if (lastEvent) cardStore.dismiss(lastEvent.id);
   }, [cardStore, lastEvent]);
 
+  // The stamps shrink, then the header, rather than make the screen scroll (fit.ts).
+  const [gridWidth, setGridWidth] = useState(0);
+  const [room, setRoom] = useState(0);
+  const [headerMemo, setHeaderMemo] = useState<HeaderMemo>({ key: '', heights: {} });
+  const [body, setBody] = useState<FitInput['body']>(null);
+  // The name wraps differently at another width or text size, so header heights only hold for these.
+  const { width, fontScale } = useWindowDimensions();
+  const headerKey = `${width}@${fontScale}`;
+  const grid = gridFor(stampsPerReward + 1);
+  const { compactHeader, stampSize } = fitCard({
+    widthLimit: stampSizeForWidth(gridWidth, grid.cols),
+    room,
+    header: headerHeightsAt(headerMemo, headerKey),
+    body,
+    rows: grid.rows,
+  });
+  const onHeaderLayout = (e: LayoutChangeEvent) => {
+    const { height } = e.nativeEvent.layout;
+    setHeaderMemo((memo) => rememberHeaderHeight(memo, headerKey, compactHeader ? 'compact' : 'full', height));
+  };
+  const onBodyLayout = (e: LayoutChangeEvent) => {
+    // Before the grid is laid out the card holds a placeholder, which says nothing about stamp size.
+    if (stampSize > 0) setBody({ height: e.nativeEvent.layout.height, stamp: stampSize });
+  };
+
   // While a completed card is being celebrated, keep it full with the reward lit;
   // once dismissed it clears to the new progress and the ticket appears.
   const stamped = lastEvent?.kind === 'success' && lastEvent.outcome.kind === 'stamped' ? lastEvent.outcome : null;
@@ -55,42 +82,35 @@ export function CardScreen() {
 
   return (
     <Screen edges={['top']}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          {/* The buttons sit beside the greeting so a long café name gets the full width. */}
-          <View style={styles.headerTop}>
-            <AppText variant="overline" tone="muted" style={{ flex: 1 }}>
-              {greeting(new Date())}
-            </AppText>
-            <View style={styles.headerActions}>
-              <IconButton icon={History} label="History" onPress={() => router.push('/history')} />
-              <IconButton icon={Info} label={`About ${cafe.name}`} onPress={() => router.push('/about')} />
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        onLayout={(e) => setRoom(e.nativeEvent.layout.height - SCROLL_PADDING_TOP - SCROLL_PADDING_BOTTOM)}
+      >
+        {/* A new view per variant, so a switch always reports the new header's height. */}
+        <CardHeader key={compactHeader ? 'compact' : 'full'} compact={compactHeader} onLayout={onHeaderLayout} />
+
+        <View onLayout={onBodyLayout}>
+          <StampCard
+            cafeName={cafe.shortName}
+            stampsPerReward={stampsPerReward}
+            filled={filled}
+            staggerFrom={staggerFrom}
+            rewardLit={celebrating}
+            caption={caption}
+            stampSize={stampSize}
+            onGridWidth={setGridWidth}
+          />
+
+          {rewardsShown > 0 ? (
+            <View style={{ marginTop: space.lg }}>
+              <RewardTicket count={rewardsShown} rewardName={rewardName} onPress={cardStore.openReward} />
             </View>
-          </View>
-          <AppText variant="display" numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>
-            {cafe.name}
-          </AppText>
+          ) : null}
         </View>
-
-        <StampCard
-          cafeName={cafe.shortName}
-          stampsPerReward={stampsPerReward}
-          filled={filled}
-          staggerFrom={staggerFrom}
-          rewardLit={celebrating}
-          caption={caption}
-        />
-
-        {rewardsShown > 0 ? (
-          <View style={{ marginTop: space.lg }}>
-            <RewardTicket count={rewardsShown} rewardName={rewardName} onPress={cardStore.openReward} />
-          </View>
-        ) : null}
-
-        {summary.totalStamps === 0 && !lastEvent ? <HowItWorks /> : null}
       </ScrollView>
 
-      <TapPanel tap={tap} hasReward={summary.rewardsAvailable > 0} />
+      <TapPanel tap={tap} />
       <FeedbackSheet feedback={feedback} onDismiss={dismiss} />
       {/* Steps aside while a tap's feedback shows, then comes back unless the reward was used. */}
       <RedeemSheet
@@ -105,6 +125,46 @@ export function CardScreen() {
   );
 }
 
+/**
+ * The greeting, the café's name, and the History and About buttons. Compact on
+ * short screens: the name moves up beside the buttons in a smaller size.
+ */
+function CardHeader({ compact, onLayout }: { compact: boolean; onLayout: (e: LayoutChangeEvent) => void }) {
+  const hello = (
+    <AppText variant="overline" tone="muted">
+      {greeting(new Date())}
+    </AppText>
+  );
+  const actions = (
+    <View style={styles.headerActions}>
+      <IconButton icon={History} label="History" onPress={() => router.push('/history')} />
+      <IconButton icon={Info} label={`About ${cafe.name}`} onPress={() => router.push('/about')} />
+    </View>
+  );
+  return compact ? (
+    <View style={[styles.header, styles.headerRow, { paddingBottom: space.md }]} onLayout={onLayout}>
+      <View style={{ flex: 1, gap: space.xxs }}>
+        {hello}
+        <AppText variant="title" numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>
+          {cafe.name}
+        </AppText>
+      </View>
+      {actions}
+    </View>
+  ) : (
+    <View style={[styles.header, { paddingBottom: space.xl }]} onLayout={onLayout}>
+      {/* The buttons sit beside the greeting so a long café name gets the full width. */}
+      <View style={styles.headerRow}>
+        <View style={{ flex: 1 }}>{hello}</View>
+        {actions}
+      </View>
+      <AppText variant="display" numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>
+        {cafe.name}
+      </AppText>
+    </View>
+  );
+}
+
 function Unavailable({ onRetry }: { onRetry: () => void }) {
   return (
     <Screen>
@@ -116,41 +176,16 @@ function Unavailable({ onRetry }: { onRetry: () => void }) {
           Your stamps are safe, but this phone couldn&rsquo;t read them just now. Restarting the app or freeing up some space usually helps.
         </AppText>
         <Button label="Try again" onPress={onRetry} style={{ alignSelf: 'stretch', marginTop: space.md }} />
+        {cafe.supportEmail ? <Button label="Report a problem" kind="ghost" icon={MessageSquareWarning} onPress={() => router.push('/report')} /> : null}
       </View>
     </Screen>
   );
 }
 
-function HowItWorks() {
+function TapPanel({ tap }: { tap: TapController }) {
   const { color } = useTheme();
-  const steps = [
-    { n: '1', text: 'Order your drink as usual.' },
-    { n: '2', text: 'Tap your phone on the counter phone (or scan its code).' },
-    { n: '3', text: `Every ${cafe.rules.stampsPerReward + 1}th drink is on us.` },
-  ];
-  return (
-    <Appear delay={200} style={{ marginTop: space.xl, gap: space.sm }}>
-      <AppText variant="overline" tone="muted">
-        How it works
-      </AppText>
-      {steps.map((s) => (
-        <View key={s.n} style={styles.step}>
-          <View style={[styles.stepNumber, { borderColor: withAlpha(color.accent, 0.5) }]}>
-            <AppText variant="caption" tone="accent" style={{ fontWeight: '700' }}>
-              {s.n}
-            </AppText>
-          </View>
-          <AppText variant="callout" style={{ flex: 1 }}>
-            {s.text}
-          </AppText>
-        </View>
-      ))}
-    </Appear>
-  );
-}
-
-function TapPanel({ tap, hasReward }: { tap: TapController; hasReward: boolean }) {
-  const { color } = useTheme();
+  // Clear of the navigation bar or gesture handle: with edge-to-edge the screen runs under it.
+  const insets = useSafeAreaInsets();
   const scan = () => router.push('/scan');
   const scanLink = <Button kind="ghost" icon={ScanLine} label="Scan code instead" onPress={scan} />;
 
@@ -178,7 +213,7 @@ function TapPanel({ tap, hasReward }: { tap: TapController; hasReward: boolean }
               <View style={{ flex: 1 }}>
                 <AppText variant="heading">Ready to tap</AppText>
                 <AppText variant="caption" tone="muted" style={{ marginTop: 2 }}>
-                  Hold your phone against the back of the counter phone.{hasReward ? ` To use your ${cafe.rules.rewardName}, tap its ticket first.` : ''}
+                  Hold your phone against the back of the counter phone.
                 </AppText>
               </View>
             </View>
@@ -194,20 +229,21 @@ function TapPanel({ tap, hasReward }: { tap: TapController; hasReward: boolean }
   })();
 
   return (
-    <View style={[styles.panel, { backgroundColor: color.background, borderTopColor: withAlpha(color.ink, 0.06) }]}>
+    <View style={[styles.panel, { backgroundColor: color.background, borderTopColor: withAlpha(color.ink, 0.06), paddingBottom: Math.max(insets.bottom, space.md) }]}>
       {body}
     </View>
   );
 }
 
+const SCROLL_PADDING_TOP = space.sm;
+const SCROLL_PADDING_BOTTOM = space.lg;
+
 const styles = StyleSheet.create({
-  scroll: { padding: space.lg, paddingBottom: space.xxxl },
+  scroll: { paddingHorizontal: space.lg, paddingTop: SCROLL_PADDING_TOP, paddingBottom: SCROLL_PADDING_BOTTOM },
   unavailable: { flex: 1, justifyContent: 'center', padding: space.xl, gap: space.sm },
-  header: { marginBottom: space.xl, marginTop: space.xs, gap: space.xxs },
-  headerTop: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  header: { gap: space.xxs },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   headerActions: { flexDirection: 'row', gap: space.xs },
-  step: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  stepNumber: { width: 26, height: 26, borderRadius: 13, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
-  panel: { paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: space.lg, borderTopWidth: StyleSheet.hairlineWidth, gap: space.xxs },
+  panel: { paddingHorizontal: space.lg, paddingTop: space.md, borderTopWidth: StyleSheet.hairlineWidth, gap: space.xxs },
   passive: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.xxs },
 });
