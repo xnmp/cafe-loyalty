@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 
 import { buildStaffCode, demoStaffCode } from '../domain/provisioning';
-import { cafe, keys, memoryStorage, seed } from '../testing/protocol.test-utils';
+import { cafe, deferred, keys, memoryStorage, seed } from '../testing/protocol.test-utils';
 import { createStaffStore } from './staffStore';
 
 const realCode = buildStaffCode(cafe.cafeId, 1, seed);
@@ -47,4 +47,24 @@ test("a counter can't be set up again, even with the demo code, until it's left 
 test('nothing is provisioned before the saved state has loaded', async () => {
   const { store } = phone();
   expect(await store.provision(realCode, '1234')).toEqual({ ok: false, error: 'already-counter' });
+});
+
+test('of two overlapping setups only the first wins, even while its save is slow', async () => {
+  const storage = memoryStorage();
+  const { store } = phone(storage);
+  await store.load();
+  const slow = deferred<void>();
+  const save = storage.storage.save;
+  storage.storage.save = async (key, data) => { await slow.promise; return save(key, data); };
+  const first = store.provision(realCode, '1234');
+  const second = store.provision(demoCode, '9999');
+  slow.resolve();
+  expect(await second).toEqual({ ok: false, error: 'already-counter' });
+  expect(await first).toEqual({ ok: true, value: undefined });
+  expect(counterOf(store)).toMatchObject({ keyId: 1, demo: false });
+
+  const restarted = phone(storage);
+  await restarted.store.load();
+  expect(counterOf(restarted.store)).toMatchObject({ keyId: 1, demo: false });
+  expect(restarted.store.checkPin('1234')).toBe(true);
 });

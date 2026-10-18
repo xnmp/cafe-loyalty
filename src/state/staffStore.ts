@@ -62,6 +62,9 @@ export function createStaffStore(deps: StaffStoreDeps): StaffStore {
   const persist = (staffCode: string, pin: PinRecord) =>
     deps.storage.save(STAFF_KEY, { version: 1, staffCode, pin } satisfies Persisted);
 
+  // Claimed synchronously, so two overlapping setups can't both pass the customer check.
+  let enrolling = false;
+
   const current = () => {
     const s = store.getSnapshot();
     return s.status === 'counter' ? s : null;
@@ -92,15 +95,20 @@ export function createStaffStore(deps: StaffStoreDeps): StaffStore {
 
     async provision(code, pin) {
       // Otherwise anyone at an unlocked counter could swap in the public demo code and lock the café out.
-      if (store.getSnapshot().status !== 'customer') return err('already-counter');
+      if (enrolling || store.getSnapshot().status !== 'customer') return err('already-counter');
       const creds = parseStaffCode(code, expected);
       if (!creds.ok) return creds;
       if (!isValidPin(pin)) return err('invalid-pin');
-      const record = createPinRecord(pin, deps.randomBytes(16));
-      await persist(code.trim(), record);
-      deps.setTagServiceEnabled(true);
-      store.set({ status: 'counter', credentials: creds.value, pin: record });
-      return ok(undefined);
+      enrolling = true;
+      try {
+        const record = createPinRecord(pin, deps.randomBytes(16));
+        await persist(code.trim(), record);
+        deps.setTagServiceEnabled(true);
+        store.set({ status: 'counter', credentials: creds.value, pin: record });
+        return ok(undefined);
+      } finally {
+        enrolling = false;
+      }
     },
 
     checkPin(pin) {

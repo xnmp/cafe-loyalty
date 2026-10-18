@@ -57,18 +57,19 @@ export function CardScreen() {
     <Screen edges={['top']}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <View style={{ flex: 1 }}>
-            <AppText variant="overline" tone="muted">
+          {/* The buttons sit beside the greeting so a long café name gets the full width. */}
+          <View style={styles.headerTop}>
+            <AppText variant="overline" tone="muted" style={{ flex: 1 }}>
               {greeting(new Date())}
             </AppText>
-            <AppText variant="display" numberOfLines={2} style={{ marginTop: 2 }}>
-              {cafe.name}
-            </AppText>
+            <View style={styles.headerActions}>
+              <IconButton icon={History} label="History" onPress={() => router.push('/history')} />
+              <IconButton icon={Info} label={`About ${cafe.name}`} onPress={() => router.push('/about')} />
+            </View>
           </View>
-          <View style={styles.headerActions}>
-            <IconButton icon={History} label="History" onPress={() => router.push('/history')} />
-            <IconButton icon={Info} label={`About ${cafe.name}`} onPress={() => router.push('/about')} />
-          </View>
+          <AppText variant="display" numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>
+            {cafe.name}
+          </AppText>
         </View>
 
         <StampCard
@@ -202,8 +203,9 @@ function TapPanel({ tap, hasReward }: { tap: TapController; hasReward: boolean }
 const styles = StyleSheet.create({
   scroll: { padding: space.lg, paddingBottom: space.xxxl },
   unavailable: { flex: 1, justifyContent: 'center', padding: space.xl, gap: space.sm },
-  header: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: space.xl, marginTop: space.xs },
-  headerActions: { flexDirection: 'row', gap: space.xs, marginTop: space.xxs },
+  header: { marginBottom: space.xl, marginTop: space.xs, gap: space.xxs },
+  headerTop: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  headerActions: { flexDirection: 'row', gap: space.xs },
   step: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   stepNumber: { width: 26, height: 26, borderRadius: 13, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   panel: { paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: space.lg, borderTopWidth: StyleSheet.hairlineWidth, gap: space.xxs },
