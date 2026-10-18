@@ -38,6 +38,8 @@ export interface ActiveOffer {
   readonly startedAt: number;
   readonly expiresAt: number;
   readonly phase: OfferPhase;
+  /** When a phone finished reading the token over NFC. */
+  readonly readAt: number | null;
   /** True if served over NFC (HCE); false means QR only. */
   readonly nfc: boolean;
   readonly qrVisible: boolean;
@@ -124,6 +126,7 @@ export function createCounterStore(deps: CounterStoreDeps): CounterStore {
             startedAt: now,
             expiresAt: now + OFFER_TTL_MS,
             phase: 'waiting',
+            readAt: null,
             nfc,
             qrVisible: !nfc,
             ack: null,
@@ -154,7 +157,7 @@ export function createCounterStore(deps: CounterStoreDeps): CounterStore {
       withOffer(offerId, (s, o) => ({
         ...s,
         log: markRead(s.log, offerId),
-        offer: o.phase === 'waiting' ? { ...o, phase: 'read' } : o,
+        offer: o.phase === 'waiting' ? { ...o, phase: 'read', readAt: deps.now() } : o,
       }));
     },
 

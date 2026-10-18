@@ -1,5 +1,5 @@
 import * as Haptics from 'expo-haptics';
-import type { LucideIcon } from 'lucide-react-native';
+import { ChevronLeft, type LucideIcon } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, type StyleProp, type TextProps, type TextStyle, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
@@ -233,5 +233,19 @@ const styles = StyleSheet.create({
   iconButton: { borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   group: { borderRadius: radius.md, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: space.sm, paddingHorizontal: space.md, minHeight: 56 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.lg, paddingTop: space.xs, paddingBottom: space.md },
   rowIcon: { width: 34, height: 34, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
 });
+
+/** Standard header for pushed/modal screens: back (or close) button + serif title. */
+export function ScreenHeader({ title, onBack, backIcon, right }: { title: string; onBack: () => void; backIcon?: LucideIcon; right?: ReactNode }) {
+  return (
+    <View style={styles.header}>
+      <IconButton icon={backIcon ?? ChevronLeft} label="Back" onPress={onBack} />
+      <AppText variant="title" numberOfLines={1} style={{ flex: 1 }} accessibilityRole="header">
+        {title}
+      </AppText>
+      {right}
+    </View>
+  );
+}
