@@ -39,13 +39,13 @@ const doc = (w: number, h: number, body: string) =>
 const text = (x: number, y: number, size: number, weight: number, fill: string, content: string, anchor = 'start') =>
   `<text x="${x}" y="${y}" font-family="Fraunces" font-size="${size}" font-weight="${weight}" fill="${fill}" text-anchor="${anchor}">${escape(content)}</text>`;
 
-/** Play phone screenshot: caption above the full screen, which keeps its aspect. 1080×2100 stays within Play's 2:1 limit. */
+/** Play phone screenshot: caption above the full screen, which keeps its aspect. Play wants exactly 9:16. */
 function screenshot(png: Buffer, lines: readonly [string, string]): string {
-  const [W, H] = [1080, 2100];
-  const shotH = 1660;
+  const [W, H] = [1080, 1920];
+  const shotH = 1510;
   const shotW = Math.round((shotH * 1080) / 2400);
   const x = (W - shotW) / 2;
-  const y = 360;
+  const y = 330;
   const r = 52;
   const href = `data:image/png;base64,${png.toString('base64')}`;
   return doc(
@@ -56,8 +56,8 @@ function screenshot(png: Buffer, lines: readonly [string, string]): string {
       <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="22"/></filter>
     </defs>
     <rect width="${W}" height="${H}" fill="${theme.background}"/>
-    ${text(W / 2, 175, 74, 600, theme.ink, lines[0], 'middle')}
-    ${text(W / 2, 265, 74, 600, theme.accent, lines[1], 'middle')}
+    ${text(W / 2, 160, 70, 600, theme.ink, lines[0], 'middle')}
+    ${text(W / 2, 245, 70, 600, theme.accent, lines[1], 'middle')}
     <rect x="${x}" y="${y + 18}" width="${shotW}" height="${shotH}" rx="${r}" fill="${theme.ink}" opacity="0.16" filter="url(#shadow)"/>
     <image x="${x}" y="${y}" width="${shotW}" height="${shotH}" xlink:href="${href}" clip-path="url(#screen)" preserveAspectRatio="xMidYMid slice"/>
     <rect x="${x}" y="${y}" width="${shotW}" height="${shotH}" rx="${r}" fill="none" stroke="${theme.line}" stroke-width="3"/>`,
