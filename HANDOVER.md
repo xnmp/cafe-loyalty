@@ -5,7 +5,7 @@ User-facing docs: [README](README.md), [release guide](docs/RELEASE.md),
 [architecture](docs/ARCHITECTURE.md). The owner's to-do list for getting to
 production is [NEXT_STEP.md](NEXT_STEP.md).
 
-## State (2026-10-18)
+## State (2026-10-19)
 
 - Feature-complete for v1: stamp card, NFC tap-to-collect (Android HCE counter
   phone → iOS/Android customers), QR fallback both ways, counter-verified
@@ -22,15 +22,15 @@ production is [NEXT_STEP.md](NEXT_STEP.md).
 - The card screen fits without scrolling on small phones (`src/features/card/fit.ts`):
   the stamps shrink first, then the header goes compact, and past 36 dp stamps it
   scrolls. Checked on a 360×760 dp emulator with 3-button navigation.
-- `bun run test` (31 suites, ~815 tests), `bunx tsc --noEmit` and
+- `bun run test` (33 suites, ~835 tests), `bunx tsc --noEmit` and
   `bunx eslint . --quiet` all pass.
 - Verified on an Android emulator (no NFC): deep-link stamps, unlock, reward
   ticket → redeem sheet → code, code re-shown from History, the counter's
   stamp QR (decoded and signature-checked), redeem → scanner, counter
   provisioning, leaving counter mode. Redemption codes decoded from the
   screen were verified against `verifyRedemption` and refused the second time.
-- **Not verified anywhere yet**: real NFC between two phones, iOS builds, the
-  counter camera scanning a customer's code. `docs/RELEASE.md` §7 is the
+- **Not verified anywhere yet**: real NFC between two phones, a signed iOS
+  build on a real iPhone, the counter camera scanning a customer's code. `docs/RELEASE.md` §7 is the
   hardware checklist.
 - Security: one audit (Codex; its content filter cut it short, but its
   findings were recovered from the transcript) and four review rounds of the
@@ -51,6 +51,16 @@ production is [NEXT_STEP.md](NEXT_STEP.md).
   `docs/RELEASE.md` §4 has the state and the road to production (12 testers for
   14 days). Bundles are built locally with `scripts/build-play-bundle.sh`, not
   EAS.
+- App Store: ready apart from the owner's Apple Developer account. The
+  owner's walkthrough is [docs/app-store.md](docs/app-store.md);
+  `bun run ios-release` (EAS build, auto-submit, `eas metadata:push`) does the
+  first-run setup too, including creating the App Store Connect app.
+  Listing text is `store.config.json`, screenshots are `docs/store/app-store/`
+  (captured by the iOS simulator workflow with *screenshots* ticked), and the
+  privacy manifest in `app.config.ts` is checked against the installed
+  libraries by `app.config.test.ts`. iPhone-only (`supportsTablet: false`):
+  iPads have no NFC. Not done yet: `easProjectId` (the script sets it on its
+  first run; commit it).
 
 ## Gotchas found the hard way
 
@@ -79,7 +89,8 @@ production is [NEXT_STEP.md](NEXT_STEP.md).
 ```sh
 bun scripts/dev-token.ts stamp 3        # signed stamp deep link for testing
 bun run render-brand                    # icons/splash from cafe.config.json
-bun run render-store                    # Play graphics from docs/store/raw/
+bun run render-store                    # store screenshots: raw/ → screenshots/, ios-raw/ → app-store/
+bun run ios-release                     # build, upload and list the iPhone app (docs/app-store.md)
 bun run setup-cafe check|new-key|retire <id>|print|demo
 scripts/build-play-bundle.sh            # signed .aab for Play → dist/
 ```
@@ -87,8 +98,10 @@ scripts/build-play-bundle.sh            # signed .aab for Play → dist/
 iOS compile check without a Mac: GitHub → xnmp/cafe-loyalty →
 Actions → **iOS simulator build** → Run workflow (`gh workflow run
 ios-simulator.yml`). It builds unsigned for the simulator, launches the app
-and uploads a screenshot. The simulator has no NFC, and deep links stop at an
-"Open in …?" prompt there, so it can't reach other screens.
+and uploads a screenshot. The simulator has no NFC. With
+`-f screenshots=true` it also drives the app with Maestro
+(`e2e/app-store-screenshots.yaml`, stamps signed by a key made in the run) and
+uploads the raw App Store screenshots.
 
 HCE unit tests (from `android/` after `bunx expo prebuild --platform android`):
 `./gradlew :cafe-hce:testDebugUnitTest`.

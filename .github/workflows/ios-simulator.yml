@@ -1,10 +1,17 @@
 # Compiles the iOS app for the simulator (unsigned), launches it and saves a
 # screenshot: proof the iOS build works without a local Mac. The simulator has no NFC, so tapping still needs a real iPhone
 # (docs/RELEASE.md §7). Runs on demand: Actions tab → iOS simulator build → Run.
+# With "screenshots" ticked it also captures the App Store screenshots
+# (e2e/app-store-screenshots.yaml); docs/RELEASE.md §5 says what to do with them.
 name: iOS simulator build
 
 on:
   workflow_dispatch:
+    inputs:
+      screenshots:
+        description: Also capture the App Store screenshots
+        type: boolean
+        default: false
 
 # macOS minutes are billed at 10x: never run two of these at once.
 concurrency:
@@ -25,6 +32,12 @@ jobs:
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
+
+      # Stamps need a key the app trusts. This one exists only inside this run:
+      # it's never committed or uploaded, and the build that trusts it is thrown away.
+      - name: Make a throwaway signing key for the screenshots
+        if: inputs.screenshots
+        run: bun run setup-cafe new-key > /dev/null
 
       - name: Generate the iOS project
         run: bunx expo prebuild --platform ios --no-install
@@ -57,7 +70,9 @@ jobs:
         run: |
           APP=$(find build/Build/Products/Release-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
           BUNDLE=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Info.plist")
-          DEVICE=$(xcrun simctl list devices available -j | jq -r '[.devices | to_entries[] | select(.key | test("iOS")) | .value[] | select(.name | test("^iPhone"))][0].udid')
+          # The biggest iPhone: App Store Connect wants 6.9" screenshots and scales them down for the rest.
+          DEVICE=$(xcrun simctl list devices available -j | jq -r '[.devices | to_entries[] | select(.key | test("iOS")) | .value[] | select(.name | test("^iPhone"))] | (map(select(.name | test("Pro Max"))) + .) | .[0].udid')
+          echo "DEVICE=$DEVICE" >> "$GITHUB_ENV"
           echo "device $DEVICE, bundle $BUNDLE"
           xcrun simctl boot "$DEVICE"
           xcrun simctl bootstatus "$DEVICE" -b
@@ -68,11 +83,34 @@ jobs:
           # Still running after launch means it didn't crash on start-up.
           xcrun simctl spawn "$DEVICE" launchctl list | grep "$BUNDLE"
 
+      - uses: actions/setup-java@v4
+        if: inputs.screenshots
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Capture the App Store screenshots
+        if: inputs.screenshots
+        run: |
+          curl -fsSL https://get.maestro.mobile.dev | bash
+          export PATH="$PATH:$HOME/.maestro/bin"
+          maestro --version
+          xcrun simctl status_bar "$DEVICE" override --time 9:41 --dataNetwork wifi --wifiMode active --wifiBars 3 \
+            --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100
+          mkdir -p app-store
+          # Links are only valid for 15 minutes, so make them just before use.
+          maestro --device "$DEVICE" test e2e/app-store-screenshots.yaml -e OUT="$PWD/app-store/" \
+            -e STAMP5="$(bun scripts/dev-token.ts stamp 5)" -e STAMP1="$(bun scripts/dev-token.ts stamp 1)" \
+            -e STAMP3="$(bun scripts/dev-token.ts stamp 3)"
+          for f in app-store/*.png; do sips -g pixelWidth -g pixelHeight "$f" | tr '\n' ' '; echo; done
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: ios-simulator
           path: |
             *.png
+            app-store/*.png
             xcodebuild.log
+            ~/.maestro/tests/**/*
           if-no-files-found: warn

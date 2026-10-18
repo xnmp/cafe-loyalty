@@ -1,0 +1,45 @@
+{
+  "configVersion": 0,
+  "apple": {
+    "categories": ["FOOD_AND_DRINK", "LIFESTYLE"],
+    "info": {
+      "en-AU": {
+        "title": "Eastern Concourse Cafe",
+        "subtitle": "Tap. Collect. Free drinks.",
+        "promoText": "The Eastern Concourse stamp card, on your phone. Tap at the counter to collect stamps. Your tenth drink is on us. No account, no sign-up.",
+        "description": "The Eastern Concourse Cafe and Bakery loyalty card, without the paper.\n\nOrder as usual, then hold your phone to the counter phone. A stamp lands on your card with a satisfying thunk. Collect nine and your next drink is on us.\n\n• Tap to collect: press Tap to collect, then hold your iPhone to the counter phone\n• No NFC? Scan the code on the counter screen instead\n• Your free drink waits on your card until you want it\n• See every stamp and reward in your history\n\nPrivate by design: no account, no sign-up, no email, no tracking. Your card lives only on your phone, and the app never sends anything over the internet.",
+        "keywords": ["coffee", "loyalty", "stamp card", "cafe", "rewards", "punch card", "free coffee", "local"],
+        "supportUrl": "https://xnmp.github.io/cafe-loyalty/support/",
+        "privacyPolicyUrl": "https://xnmp.github.io/cafe-loyalty/privacy/"
+      }
+    },
+    "advisory": {
+      "alcoholTobaccoOrDrugUseOrReferences": "NONE",
+      "contests": "NONE",
+      "gamblingSimulated": "NONE",
+      "horrorOrFearThemes": "NONE",
+      "matureOrSuggestiveThemes": "NONE",
+      "medicalOrTreatmentInformation": "NONE",
+      "profanityOrCrudeHumor": "NONE",
+      "sexualContentGraphicAndNudity": "NONE",
+      "sexualContentOrNudity": "NONE",
+      "violenceCartoonOrFantasy": "NONE",
+      "violenceRealistic": "NONE",
+      "violenceRealisticProlongedGraphicOrSadistic": "NONE",
+      "gunsOrOtherWeapons": "NONE",
+      "gambling": false,
+      "lootBox": false,
+      "unrestrictedWebAccess": false,
+      "advertising": false,
+      "ageAssurance": false,
+      "healthOrWellnessTopics": false,
+      "messagingAndChat": false,
+      "parentalControls": false,
+      "userGeneratedContent": false,
+      "kidsAgeBand": null,
+      "ageRatingOverride": "NONE",
+      "koreaAgeRatingOverride": "NONE"
+    },
+    "release": { "automaticRelease": true }
+  }
+}

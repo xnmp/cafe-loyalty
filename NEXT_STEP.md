@@ -160,9 +160,13 @@ Concourse Cafe** on Google Play and install it.
 
 ## Other things you might wonder about
 
-- **iPhones:** not yet. It needs an Apple Developer account (US$99 a year).
-  When you have one, tell Claude and it will walk you through it. The café's
-  counter phone has to be Android either way.
+- **iPhones:** everything is ready except the Apple Developer account
+  (US$99 a year). The plain-English guide is
+  `/home/chong/Repos/cafe-loyalty/docs/app-store.md`. In short: make a free
+  Expo account, get the Apple account, run `bun run ios-release` in a
+  terminal, then click through App Store Connect. Apple doesn't need the 12
+  testers, so the iPhone version can go public before the Android one. The
+  café's counter phone has to be Android either way.
 - **If the app needs a fix later:** tell Claude what's wrong. It makes the new
   version, and your only job is dragging one file into the Play Console page
   it opens.

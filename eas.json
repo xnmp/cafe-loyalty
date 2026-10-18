@@ -30,7 +30,12 @@
         "serviceAccountKeyPath": "./cafe-secrets/play-service-account.json",
         "track": "internal"
       },
-      "ios": {}
+      "ios": {
+        "appName": "Eastern Concourse Cafe",
+        "language": "en-AU",
+        "sku": "eastern-concourse-cafe",
+        "metadataPath": "./store.config.json"
+      }
     }
   }
 }

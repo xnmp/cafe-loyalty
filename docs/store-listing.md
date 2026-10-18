@@ -14,7 +14,7 @@ Your Eastern Concourse stamp card. Tap at the counter — every 10th drink free.
 
 ## Subtitle (App Store, 30 chars max)
 
-Tap. Collect. Free coffee.
+Tap. Collect. Free drinks.
 
 ## Promotional text (App Store, 170 chars max)
 

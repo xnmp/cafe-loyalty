@@ -120,28 +120,41 @@ JSON key as `cafe-secrets/play-service-account.json`. `eas.json` already points
 
 ## 5. iOS (App Store)
 
-1. Link the project to Expo once: `bunx eas-cli login`, then
-   `bunx eas-cli init`. It can't edit `app.config.ts` itself. Put the project id it
-   prints in `cafe.config.json` as `"easProjectId"` and commit.
-2. `bunx eas-cli build -p ios --profile production`. Sign in with your Apple
-   account when asked. EAS registers the bundle id, enables the **NFC Tag
-   Reading** capability (from the app's entitlements) and handles certificates.
-3. `bunx eas-cli submit -p ios --latest` uploads it to App Store Connect and
-   TestFlight. Install it on your iPhone through TestFlight.
-4. App Store Connect → your app:
-   - App Privacy: **Data Not Collected**. Privacy policy URL from §2.
-   - Screenshots: take them on your iPhone from the TestFlight build (6.7"/6.9"
-     sizes; side button + volume up). Never screenshot a **Show my code**
-     screen: that code is a real free drink anyone could scan off the listing.
-   - Category: Food & Drink. Copy text from `docs/store-listing.md`.
-   - **App Review notes.** Reviewers don't have the counter phone. Say: "Customers
-     collect stamps by tapping their iPhone on the café's Android counter phone
-     (NFC) or by scanning a code on its screen. Rewards are verified by that
-     counter phone. A demo video is linked." Record a 30-second screen recording
-     on your iPhone of tapping the counter phone and getting a stamp, upload it
-     unlisted (YouTube or a Drive link), and paste the link. Apple can ask for a
-     fresh video with later submissions.
-5. Submit for review.
+Everything that doesn't need an Apple account is already set up; the owner's
+step-by-step is [`docs/app-store.md`](app-store.md).
+
+- **One command:** `bun run ios-release` (`scripts/ios-release.sh`). It signs in
+  to Expo, links the project on the first run (saving `easProjectId` in
+  `cafe.config.json`: commit it), runs
+  `eas build -p ios --profile production --auto-submit` and then
+  `eas metadata:push`. On the first run EAS registers the bundle id with the
+  **NFC Tag Reading** capability (from the app's entitlements), makes the
+  certificates and an App Store Connect API key, and creates the app in App
+  Store Connect from `submit.production.ios` in `eas.json`.
+- **Listing:** `store.config.json` (EAS Metadata) holds the name, subtitle,
+  promo text, description, keywords, categories, support and privacy URLs and
+  the age-rating answers. Edit it and run `bunx eas-cli metadata:push`. It
+  can't hold screenshots, App Privacy, pricing or the review contact; those
+  are clicked through once (`docs/app-store.md` step 5). Copyright and the
+  review contact stay out of the file because the repo is public.
+- **Screenshots:** `docs/store/app-store/` (6.9", 1320×2868; iPhone-only, so
+  no iPad set). Regenerate: Actions → **iOS simulator build** → Run workflow
+  with *screenshots* ticked (`gh workflow run ios-simulator.yml -f
+  screenshots=true`), unzip its `app-store/` PNGs into `docs/store/ios-raw/`,
+  then `bun run render-store`. The Maestro flow is
+  `e2e/app-store-screenshots.yaml`; it stamps with a throwaway key made in the
+  run, so no secret is involved. Never screenshot a **Show my code** screen:
+  that code is a real free drink anyone could scan off the listing.
+- **Privacy:** App Privacy is **Data Not Collected**. The app's privacy
+  manifest (`app.config.ts`) repeats every reason its libraries declare;
+  `app.config.test.ts` fails when an upgrade adds one.
+- **App Review:** reviewers don't have the counter phone. Attach a 30-second
+  screen recording of an iPhone collecting a stamp at the counter, and paste
+  the notes from `docs/app-store.md` (they point to the demo staff code at
+  `docs/review/`). Apple can ask for a fresh video with later submissions.
+- **Updates:** bump `version` in `app.config.ts`; the build number goes up by
+  itself (`appVersionSource: remote`). Run `bun run ios-release`, then **Add
+  for Review** on the new version in App Store Connect.
 
 ## 6. Set up the counter phone
 

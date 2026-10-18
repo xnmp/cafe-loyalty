@@ -1,8 +1,10 @@
-// Renders the Play Store graphics from cafe.config.json and raw screen
-// captures: `bun run render-store`. Output goes to docs/store/.
+// Renders the Play Store and App Store graphics from cafe.config.json and raw
+// screen captures: `bun run render-store`. Output goes to docs/store/.
 //
-// Raw captures (1080×2400 PNGs) live in docs/store/raw/. Take new ones from a
-// build with a clean status bar (Android demo mode) and the dev tools hidden.
+// Raw Android captures (1080×2400 PNGs) live in docs/store/raw/. Take new ones
+// from a build with a clean status bar (Android demo mode) and the dev tools
+// hidden. Raw iPhone captures live in docs/store/ios-raw/; the iOS simulator
+// workflow makes them (docs/RELEASE.md §5).
 import { Resvg } from '@resvg/resvg-js';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -39,14 +41,34 @@ const doc = (w: number, h: number, body: string) =>
 const text = (x: number, y: number, size: number, weight: number, fill: string, content: string, anchor = 'start') =>
   `<text x="${x}" y="${y}" font-family="Fraunces" font-size="${size}" font-weight="${weight}" fill="${fill}" text-anchor="${anchor}">${escape(content)}</text>`;
 
-/** Play phone screenshot: caption above the full screen, which keeps its aspect. Play wants exactly 9:16. */
-function screenshot(png: Buffer, lines: readonly [string, string]): string {
-  const [W, H] = [1080, 1920];
-  const shotH = 1510;
-  const shotW = Math.round((shotH * 1080) / 2400);
+/** Where a store's screenshot puts the caption and the screen. */
+interface Layout {
+  readonly size: readonly [number, number];
+  readonly caption: { readonly size: number; readonly baselines: readonly [number, number] };
+  readonly screenTop: number;
+  readonly screenBottom: number;
+  readonly radius: number;
+}
+/** Play wants exactly 9:16. */
+const play: Layout = { size: [1080, 1920], caption: { size: 70, baselines: [160, 245] }, screenTop: 330, screenBottom: 1840, radius: 52 };
+/** App Store Connect's 6.9" iPhone size; it scales these down for smaller iPhones. */
+const appStore: Layout = { size: [1320, 2868], caption: { size: 96, baselines: [250, 366] }, screenTop: 480, screenBottom: 2748, radius: 96 };
+
+/** Width and height from a PNG's header. */
+function pngSize(png: Buffer): readonly [number, number] {
+  if (png.length < 24 || png.toString('ascii', 12, 16) !== 'IHDR') throw new Error('not a PNG');
+  return [png.readUInt32BE(16), png.readUInt32BE(20)];
+}
+
+/** Store screenshot: caption above the full screen, which keeps its aspect. */
+function screenshot(png: Buffer, lines: readonly [string, string], layout: Layout): string {
+  const [W, H] = layout.size;
+  const [rawW, rawH] = pngSize(png);
+  const shotH = layout.screenBottom - layout.screenTop;
+  const shotW = Math.round((shotH * rawW) / rawH);
   const x = (W - shotW) / 2;
-  const y = 330;
-  const r = 52;
+  const y = layout.screenTop;
+  const r = layout.radius;
   const href = `data:image/png;base64,${png.toString('base64')}`;
   return doc(
     W,
@@ -56,8 +78,8 @@ function screenshot(png: Buffer, lines: readonly [string, string]): string {
       <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="22"/></filter>
     </defs>
     <rect width="${W}" height="${H}" fill="${theme.background}"/>
-    ${text(W / 2, 160, 70, 600, theme.ink, lines[0], 'middle')}
-    ${text(W / 2, 245, 70, 600, theme.accent, lines[1], 'middle')}
+    ${text(W / 2, layout.caption.baselines[0], layout.caption.size, 600, theme.ink, lines[0], 'middle')}
+    ${text(W / 2, layout.caption.baselines[1], layout.caption.size, 600, theme.accent, lines[1], 'middle')}
     <rect x="${x}" y="${y + 18}" width="${shotW}" height="${shotH}" rx="${r}" fill="${theme.ink}" opacity="0.16" filter="url(#shadow)"/>
     <image x="${x}" y="${y}" width="${shotW}" height="${shotH}" xlink:href="${href}" clip-path="url(#screen)" preserveAspectRatio="xMidYMid slice"/>
     <rect x="${x}" y="${y}" width="${shotW}" height="${shotH}" rx="${r}" fill="none" stroke="${theme.line}" stroke-width="3"/>`,
@@ -101,18 +123,24 @@ const icon512 = () => doc(512, 512, `<rect width="512" height="512" fill="${them
 
 const render = (source: string) => new Resvg(source, { fitTo: { mode: 'original' }, font: { fontFiles, loadSystemFonts: false, defaultFontFamily: 'Fraunces' } }).render().asPng();
 
-mkdirSync(join(out, 'screenshots'), { recursive: true });
 const write = (file: string, source: string) => {
   writeFileSync(join(out, file), render(source));
   console.log(`docs/store/${file}`);
 };
 write('icon-512.png', icon512());
 write('feature-graphic.png', featureGraphic());
-for (const { raw, lines } of screenshots) {
-  const path = join(out, 'raw', raw);
-  if (!existsSync(path)) {
-    console.warn(`skipped ${raw}: no capture in docs/store/raw/`);
-    continue;
+const stores = [
+  { from: 'raw', to: 'screenshots', layout: play },
+  { from: 'ios-raw', to: 'app-store', layout: appStore },
+] as const;
+for (const { from, to, layout } of stores) {
+  mkdirSync(join(out, to), { recursive: true });
+  for (const { raw, lines } of screenshots) {
+    const path = join(out, from, raw);
+    if (!existsSync(path)) {
+      console.warn(`skipped ${to}/${raw}: no capture in docs/store/${from}/`);
+      continue;
+    }
+    write(`${to}/${raw}`, screenshot(readFileSync(path), lines, layout));
   }
-  write(`screenshots/${raw}`, screenshot(readFileSync(path), lines));
 }

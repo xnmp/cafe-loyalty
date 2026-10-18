@@ -62,7 +62,8 @@
     "setup-cafe": "bun scripts/setup-cafe.ts",
     "render-brand": "bun scripts/render-brand.ts",
     "render-store": "bun scripts/render-store.ts",
-    "render-tester-sign": "bun scripts/render-tester-sign.ts"
+    "render-tester-sign": "bun scripts/render-tester-sign.ts",
+    "ios-release": "scripts/ios-release.sh"
   },
   "private": true,
   "jest": {

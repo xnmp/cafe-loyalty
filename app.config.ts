@@ -23,10 +23,25 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   userInterfaceStyle: 'automatic',
   ios: {
     bundleIdentifier: cafe.bundleId,
-    supportsTablet: true,
+    // iPads have no NFC reader. iPhone-only also means the App Store needs no iPad
+    // screenshots; iPads can still run it in iPhone mode.
+    supportsTablet: false,
     infoPlist: {
       // Ed25519 signatures only (authentication), which is exempt from export compliance.
       ITSAppUsesNonExemptEncryption: false,
+    },
+    // Apple doesn't read every library's own manifest out of static pods
+    // (docs.expo.dev/guides/apple-privacy), so the app repeats their reasons.
+    // app.config.test.ts fails when a library adds one that's missing here.
+    privacyManifests: {
+      NSPrivacyTracking: false,
+      NSPrivacyCollectedDataTypes: [],
+      NSPrivacyAccessedAPITypes: [
+        { NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryDiskSpace', NSPrivacyAccessedAPITypeReasons: ['85F4.1', 'E174.1'] },
+        { NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryFileTimestamp', NSPrivacyAccessedAPITypeReasons: ['0A2A.1', '3B52.1', 'C617.1'] },
+        { NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategorySystemBootTime', NSPrivacyAccessedAPITypeReasons: ['35F9.1'] },
+        { NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryUserDefaults', NSPrivacyAccessedAPITypeReasons: ['CA92.1'] },
+      ],
     },
   },
   android: {

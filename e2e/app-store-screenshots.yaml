@@ -1,0 +1,68 @@
+# Captures the App Store screenshots on the iOS simulator (run by
+# .github/workflows/ios-simulator.yml with screenshots: true). The same five
+# screens as the Play listing, in docs/store/raw/. Never add one that shows a
+# redemption code: it carries real signed stamps.
+#   STAMP5, STAMP1, STAMP3: stamp links from `bun scripts/dev-token.ts stamp <n>`
+#   OUT: where to save the PNGs, ending in /
+appId: md.chong.cafecard
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "Scan code to collect"
+    timeout: 60000
+
+# Deep links from outside stop at iOS's "Open in …?" prompt.
+- openLink: ${STAMP5}
+- runFlow:
+    when:
+      visible: "Open"
+    commands:
+      - tapOn: "Open"
+- extendedWaitUntil:
+    visible: "5 stamps added"
+    timeout: 20000
+- extendedWaitUntil:
+    notVisible: "5 stamps added"
+    timeout: 20000
+
+- openLink: ${STAMP1}
+- runFlow:
+    when:
+      visible: "Open"
+    commands:
+      - tapOn: "Open"
+- extendedWaitUntil:
+    visible: "Stamp added"
+    timeout: 20000
+- takeScreenshot: ${OUT}02-stamp-added
+# The sheet closes by itself after a few seconds.
+- extendedWaitUntil:
+    notVisible: "Stamp added"
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}01-card
+
+- openLink: ${STAMP3}
+- runFlow:
+    when:
+      visible: "Open"
+    commands:
+      - tapOn: "Open"
+- extendedWaitUntil:
+    visible: "Lovely"
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}03-unlocked
+- tapOn: "Lovely"
+- extendedWaitUntil:
+    visible: "Free drink ready"
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}04-reward-ready
+
+- tapOn: "History"
+- extendedWaitUntil:
+    visible: "Member since.*"
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}07-history
