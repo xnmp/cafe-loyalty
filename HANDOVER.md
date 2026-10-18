@@ -32,10 +32,11 @@ User-facing docs: [README](README.md), [release guide](docs/RELEASE.md),
   `src/ui/Sheet.tsx`). Reproduced roughly 1 in 6 opens before the fix, 0 in 50 after.
 - Reanimated reads reduced motion once per process (`transition_animation_scale`
   = 0); `uiautomator dump` on the emulator can flip animation scales to 0.
-- Whether an NFC tap may spend a reward is decided only by
-  `src/features/card/redeemFlow.ts`; the sheet and the reader both read it.
-  Don't add a second flag: the security review found the bugs where two
-  pieces of state disagreed.
+- Whether an NFC tap may spend a reward is decided only in the card store
+  (`using`, transitions in `src/state/rewardUse.ts`), checked and claimed in
+  one synchronous step as it replies. Don't pass a "may redeem" flag down from
+  the UI: two review rounds found races wherever screen state and the reader
+  disagreed (a second reward spent mid-save, proofs sent behind feedback).
 - A redemption code (QR) contains real signed stamps: never put one in a store
   screenshot. `scripts/render-store.ts` says so too.
 - Signature checks are slow without a JIT: about 1 s for 9 proofs under

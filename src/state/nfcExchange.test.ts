@@ -71,7 +71,8 @@ async function tap(counter: Counter, customer: CardStore, { replyArrives = true,
   const records = decodeMessage(served.ndef);
   expect(records).not.toBeNull();
   counter.store.onTagRead(served.offerId);
-  const exchange = await customer.tap(messageUris(records!), { useReward });
+  if (useReward) customer.openReward();
+  const exchange = await customer.tap(messageUris(records!));
   let delivered = false;
   if (exchange.reply) {
     const message = encodeUriMessage(exchange.reply);
@@ -82,6 +83,7 @@ async function tap(counter: Counter, customer: CardStore, { replyArrives = true,
     }
   }
   const event = await exchange.finish(delivered);
+  customer.dismiss(event.id); // the customer reads what their phone says
   return { event, outcome: await settled(counter.store) };
 }
 
@@ -178,9 +180,11 @@ test('a counter request replayed from another device takes nothing from a card t
   counter.store.offer(credentials, 'redeem', 1);
   // Someone reads the counter phone's request and plays it to a customer's phone from their own device.
   const captured = messageUris(decodeMessage(counter.serving()!.ndef)!);
-  const bumped = await customer.store.tap(captured, { useReward: false });
+  const bumped = await customer.store.tap(captured);
   expect(bumped.reply).toBeNull();
-  expect(await bumped.finish(true)).toMatchObject({ kind: 'error', error: 'reward-closed' });
+  const refused = await bumped.finish(true);
+  expect(refused).toMatchObject({ kind: 'error', error: 'reward-closed' });
+  customer.store.dismiss(refused.id);
   expect(summary(customer.store).rewardsAvailable).toBe(1);
 
   // Tapping the real counter without opening the reward doesn't use it either; opening it first does.

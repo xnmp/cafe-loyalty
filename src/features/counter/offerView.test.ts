@@ -27,7 +27,7 @@ test.each(['stamp', 'redeem'] as const)('read %s transitions at the exact grace 
   expect(view(input, now + ACK_GRACE_MS - 1)).toMatchObject({ stage: 'reading', title: 'Phone detected…', body: 'Hold still for a moment.' });
   const expected = kind === 'stamp'
     ? { stage: 'delivered', title: 'Sent to their phone', body: 'Check their screen shows it, then tap Done.' }
-    : { stage: 'stalled', title: "Didn't hear back", body: 'Ask them to open the free drink ticket in the app and tap again, or scan their code.' };
+    : { stage: 'stalled', title: "Didn't hear back", body: 'Ask them to open the free drink ticket in the app and tap again (iPhone: press Tap the counter phone), or scan their code.' };
   expect(view(input, now + ACK_GRACE_MS)).toMatchObject(expected);
   expect(view(input, now + ACK_GRACE_MS + 1)).toMatchObject(expected);
 });

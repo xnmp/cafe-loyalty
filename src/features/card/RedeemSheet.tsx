@@ -3,11 +3,11 @@ import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
 import { cafe } from '../../config';
+import type { CodeError, RewardUse } from '../../state/rewardUse';
 import { Appear, NfcPulse } from '../../ui/motion';
 import { AppText, Button } from '../../ui/primitives';
 import { Sheet } from '../../ui/Sheet';
 import { elevation, radius, space, useTheme, withAlpha } from '../../ui/theme';
-import type { CodeError, RedeemFlow } from './redeemFlow';
 import type { TapController } from './useTapToCollect';
 
 const codeErrors: Record<CodeError, string> = {
@@ -16,20 +16,20 @@ const codeErrors: Record<CodeError, string> = {
 };
 
 /**
- * Using a reward; `flow` (see redeemFlow.ts) is the single source of truth.
+ * Using a reward; `using` (see rewardUse.ts) is the single source of truth.
  * While it's open a tap on the counter phone may spend it. Or the customer
  * shows a code and the counter phone scans it: that spends the reward on this
  * phone, and it stays in History so it can be shown again if never scanned.
  */
 export function RedeemSheet({
-  flow,
+  using,
   visible,
   count,
   tap,
   onShowCode,
   onClose,
 }: {
-  flow: RedeemFlow;
+  using: RewardUse;
   visible: boolean;
   count: number;
   tap: TapController;
@@ -38,7 +38,9 @@ export function RedeemSheet({
 }) {
   const { rewardName } = cafe.rules;
   const nfcReady = tap.availability === 'ready';
-  const preparing = flow.kind === 'preparing';
+  const preparing = using?.kind === 'preparing';
+  // A tap is mid-exchange or a code is being saved: nothing else may start.
+  const busy = preparing || using?.kind === 'sending';
   const howTo = !nfcReady
     ? 'show them your code.'
     : tap.passive
@@ -47,8 +49,8 @@ export function RedeemSheet({
 
   return (
     <Sheet visible={visible} onDismiss={preparing ? undefined : onClose}>
-      {flow.kind === 'code' ? (
-        <RedemptionCode link={flow.link} onDone={onClose} />
+      {using?.kind === 'code' ? (
+        <RedemptionCode link={using.link} onDone={onClose} />
       ) : (
         <View style={styles.content}>
           <GiftBadge />
@@ -58,16 +60,16 @@ export function RedeemSheet({
           <AppText tone="muted" align="center" style={styles.body}>
             {`Ask for it when you order. When the barista is ready, ${howTo}`}
           </AppText>
-          {flow.kind === 'ready' && flow.error ? (
+          {using?.kind === 'open' && using.error ? (
             <AppText variant="callout" tone="danger" align="center" accessibilityLiveRegion="polite" style={{ marginTop: space.sm }}>
-              {codeErrors[flow.error]}
+              {codeErrors[using.error]}
             </AppText>
           ) : null}
           {nfcReady ? (
             tap.passive ? (
-              <ReadyToTap active={!preparing} />
+              <ReadyToTap active={!busy} />
             ) : (
-              <Button icon={Nfc} label="Tap the counter phone" busy={tap.reading} disabled={preparing} onPress={tap.startSession} style={styles.primary} />
+              <Button icon={Nfc} label="Tap the counter phone" busy={tap.reading} disabled={busy} onPress={tap.startSession} style={styles.primary} />
             )
           ) : null}
           <Button
@@ -75,14 +77,14 @@ export function RedeemSheet({
             kind={nfcReady ? 'secondary' : 'primary'}
             label="Show my code"
             busy={preparing}
-            disabled={tap.reading}
+            disabled={busy || tap.reading}
             onPress={onShowCode}
             style={nfcReady ? styles.secondary : styles.primary}
           />
           <AppText variant="caption" tone="muted" align="center" style={{ marginTop: space.xs }}>
             {`Showing the code uses ${count > 1 ? `one ${rewardName}` : `your ${rewardName}`}.`}
           </AppText>
-          <Button kind="ghost" label="Not now" disabled={preparing} onPress={onClose} style={{ alignSelf: 'stretch', marginTop: space.xs }} />
+          <Button kind="ghost" label="Not now" disabled={busy} onPress={onClose} style={{ alignSelf: 'stretch', marginTop: space.xs }} />
         </View>
       )}
     </Sheet>

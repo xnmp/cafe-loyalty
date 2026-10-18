@@ -3,8 +3,8 @@ import { useCallback, useEffect, useEffectEvent, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 
 import { cafe } from '../../config';
-import { cancelRead, getAvailability, openNfcSettings, readOnce, type NfcAvailability } from '../../infra/nfcReader';
-import type { IntakeSource, TapOptions } from '../../state/cardStore';
+import { cancelRead, getAvailability, onAvailabilityChange, openNfcSettings, readOnce, type NfcAvailability } from '../../infra/nfcReader';
+import type { IntakeSource } from '../../state/cardStore';
 import { useStores } from '../../state/AppProviders';
 import type { Feedback } from './feedback';
 import { submitWithFeedback, tapWithFeedback } from './submit';
@@ -23,11 +23,8 @@ export interface TapController {
   submit(uris: readonly string[], source: Exclude<IntakeSource, 'nfc'>): Promise<Feedback>;
 }
 
-/**
- * `useReward`: the customer has opened a reward to use it. Only then can a tap
- * hand its stamps to the counter phone; otherwise a tap only collects stamps.
- */
-export function useTapToCollect({ paused, useReward }: { paused: boolean; useReward: boolean }): TapController {
+/** Whether a tap may spend a reward is the card store's call (see rewardUse.ts), made as it replies. */
+export function useTapToCollect({ paused }: { paused: boolean }): TapController {
   const { card } = useStores();
   const [availability, setAvailability] = useState<NfcAvailability | 'checking'>('checking');
   const [reading, setReading] = useState(false);
@@ -38,16 +35,18 @@ export function useTapToCollect({ paused, useReward }: { paused: boolean; useRew
     [card],
   );
 
-  // Re-check NFC whenever the screen gains focus or the app returns from Settings.
+  // Re-check NFC whenever the screen gains focus, the app returns from Settings, or NFC is switched on or off.
   useFocusEffect(
     useCallback(() => {
       let alive = true;
       const refresh = () => void getAvailability().then((a) => alive && setAvailability(a));
       refresh();
       const sub = AppState.addEventListener('change', (s) => s === 'active' && refresh());
+      const unsubscribe = onAvailabilityChange(refresh);
       return () => {
         alive = false;
         sub.remove();
+        unsubscribe();
       };
     }, []),
   );
@@ -56,7 +55,6 @@ export function useTapToCollect({ paused, useReward }: { paused: boolean; useRew
   // Pausing skips the next read rather than cancelling the current one, so an
   // in-flight ack write still reaches the counter phone.
   const isPaused = useEffectEvent(() => paused);
-  const options = useEffectEvent((): TapOptions => ({ useReward }));
   const focused = useIsFocused();
   useEffect(() => {
     if (!focused || !passive || availability !== 'ready') return;
@@ -67,7 +65,9 @@ export function useTapToCollect({ paused, useReward }: { paused: boolean; useRew
           await sleep(400);
           continue;
         }
-        const outcome = await readOnce('', (uris) => tapWithFeedback(card, uris, options()));
+        const outcome = await readOnce('', (uris) => tapWithFeedback(card, uris));
+        // A failing reader may mean NFC was just switched off.
+        if (outcome === 'failed') void getAvailability().then((a) => active && setAvailability(a));
         // Give the phone time to leave the field so the same tap isn't read twice.
         await sleep(outcome === 'handled' ? 1800 : outcome === 'failed' ? 800 : 250);
       }
@@ -81,10 +81,9 @@ export function useTapToCollect({ paused, useReward }: { paused: boolean; useRew
   const startSession = useCallback(() => {
     if (reading) return;
     setReading(true);
-    // iOS: the system sheet covers the app for the whole session, so the choice made as it opened holds.
     const message = `Hold the top of your iPhone near the back of the ${cafe.name} counter phone.`;
-    void readOnce(message, (uris) => tapWithFeedback(card, uris, { useReward })).finally(() => setReading(false));
-  }, [reading, card, useReward]);
+    void readOnce(message, (uris) => tapWithFeedback(card, uris)).finally(() => setReading(false));
+  }, [reading, card]);
 
   return { availability, reading, passive, startSession, openSettings: () => void openNfcSettings(), submit };
 }

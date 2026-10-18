@@ -50,8 +50,9 @@ but nothing it says about that card is trusted when a reward is handed out.
   already used within the last 10 minutes says so, so staff can tell a missed
   confirmation (or a counter restart mid-check) from an old code.
 - A tap hands over the card's stamps only while the customer has their reward
-  open (the free-drink sheet) and isn't turning it into a code; that's decided
-  in one place, `src/features/card/redeemFlow.ts`. With just the card on screen, a redemption
+  open (the free-drink sheet), nothing is on screen over it, and no code or
+  other tap is using it. The card store checks and claims that in one step as
+  it replies (`src/state/rewardUse.ts`). With just the card on screen, a redemption
   request gets no reply, so a counter request recorded and replayed from another
   device can't take a reward off someone's phone. Stamps don't need this: they
   carry no value until redeemed.
@@ -78,7 +79,8 @@ but nothing it says about that card is trusted when a reward is handed out.
     marked used on their phone.
   - If an NFC write reaches the counter but the customer's phone sees it fail,
     the reward stays on the card until the next attempt, which the counter
-    refuses as already used.
+    refuses as already used. The same goes if the phone can't save after the
+    counter took it; the phone then says to check the counter screen.
   - A malformed or empty request written by an NFC tool ends the counter's
     current offer with a refusal. Staff start it again.
   - With two counter phones, each keeps its own registry, so the same stamps

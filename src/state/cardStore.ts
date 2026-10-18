@@ -6,6 +6,7 @@ import { planRedemption, requestForEvent, type RedemptionPlan } from '../domain/
 import { err, ok, type Result } from '../domain/result';
 import { decodeToken, nonceId, type KeyRing } from '../domain/token';
 import type { JsonStore } from '../infra/storage';
+import { isOpen, rewardUse, type CodeError, type RewardUse, type RewardUseAction } from './rewardUse';
 import { createStore, type Store } from './store';
 
 export const CARD_KEY = 'card.v2';
@@ -23,7 +24,9 @@ export type IntakeProblem =
   /** A redemption request arrived without an NFC session to answer it (e.g. the tap launched the app). */
   | 'tap-again'
   /** NFC: the counter asked for a reward, but the customer hadn't opened one, so nothing was sent. */
-  | 'reward-closed';
+  | 'reward-closed'
+  /** NFC: the counter may have taken the reward, but this phone couldn't record it. */
+  | 'redeem-not-saved';
 
 /** What the UI reacts to after a tap/scan. `id` lets the UI tell repeats apart. */
 export type IntakeEvent =
@@ -37,6 +40,8 @@ export interface CardState {
   readonly status: 'loading' | 'ready' | 'unavailable';
   readonly card: Card;
   readonly lastEvent: IntakeEvent | null;
+  /** The customer using a reward; see rewardUse.ts. */
+  readonly using: RewardUse;
 }
 
 /**
@@ -57,30 +62,31 @@ export interface CardStoreDeps {
   readonly keys: KeyRing;
 }
 
-export interface TapOptions {
-  /**
-   * The customer has opened a reward to use it. Only then does a redemption
-   * request get the card's stamps: a counter request replayed from another
-   * device can't take a reward off a card that's merely on screen.
-   */
-  readonly useReward: boolean;
-}
-
 export interface CardStore extends Store<CardState> {
   load(): Promise<void>;
-  /** NFC: handles what was read from the counter phone. Stamps are taken whatever the options. */
-  tap(uris: readonly string[], options: TapOptions): Promise<TapExchange>;
+  /**
+   * NFC: handles what was read from the counter phone. Stamps always land. A
+   * redemption request gets the card's stamps only while a reward is open and
+   * nothing is on screen over it, checked at the moment of replying: a counter
+   * request replayed from another device can't take a reward off a card that's
+   * merely on screen.
+   */
+  tap(uris: readonly string[]): Promise<TapExchange>;
   /** QR scans and deep links. */
   submit(uris: readonly string[], source: Exclude<IntakeSource, 'nfc'>): Promise<IntakeEvent>;
-  /** Spends one reward on a code for the counter to scan, and returns the code. */
-  redeemWithCode(): Promise<Result<{ readonly link: string; readonly event: RedeemEvent }, 'no-reward' | 'storage'>>;
+  /** The customer opened a reward to use it. */
+  openReward(): void;
+  /** Closes it, unless a code is being saved. */
+  closeReward(): void;
+  /** Spends the open reward on a code for the counter to scan. `busy`: the reward isn't open, or a tap or code is already using it. */
+  showCode(): Promise<Result<{ readonly link: string; readonly event: RedeemEvent }, CodeError | 'busy'>>;
   /** The code of a past redemption, to show again (e.g. if it was never scanned). */
   codeFor(event: RedeemEvent): string | null;
   dismiss(eventId: number): void;
 }
 
 export function createCardStore(deps: CardStoreDeps): CardStore {
-  const store = createStore<CardState>({ status: 'loading', card: emptyCard, lastEvent: null });
+  const store = createStore<CardState>({ status: 'loading', card: emptyCard, lastEvent: null, using: null });
   const { cafe } = deps;
   let nextEventId = 1;
   let queue: Promise<unknown> = Promise.resolve();
@@ -124,6 +130,17 @@ export function createCardStore(deps: CardStoreDeps): CardStore {
   const publish = (event: IntakeEvent): IntakeEvent => {
     store.set({ ...store.getSnapshot(), lastEvent: event });
     return event;
+  };
+  const apply = (action: RewardUseAction): void => {
+    const s = store.getSnapshot();
+    const using = rewardUse(s.using, action);
+    if (using !== s.using) store.set({ ...s, using });
+  };
+  /** A tap that sent the card's stamps is over: show its outcome and move the reward on in one update. */
+  const settleTap = (used: boolean, outcome: IntakeEvent): IntakeEvent => {
+    const s = store.getSnapshot();
+    store.set({ ...s, lastEvent: outcome, using: rewardUse(s.using, { type: 'sent', used }) });
+    return outcome;
   };
   const event = (body: DistributiveOmit<IntakeEvent, 'id'>): IntakeEvent => ({ ...body, id: nextEventId++ }) as IntakeEvent;
   const failure = (error: IntakeProblem, source: IntakeSource) => event({ kind: 'error', error, source });
@@ -171,39 +188,54 @@ export function createCardStore(deps: CardStoreDeps): CardStore {
     };
   };
 
+  // The request reached the counter, which may already have given the reward: whatever happens here, it's used.
   const commit = (plan: RedemptionPlan, trigger: string) =>
     serial(async (): Promise<IntakeEvent> => {
       const card = await ensureLoaded();
-      if (!card) return publish(failure('storage', 'nfc'));
+      if (!card) return settleTap(true, failure('redeem-not-saved', 'nfc'));
       const committed = commitRedemption(card, plan, cafe.rules, { now: deps.now(), via: 'nfc', trigger });
       if (!committed.ok) {
         const original = findEvent(card, plan.request.requestId) ?? findEvent(card, trigger);
-        return publish(original ? event({ kind: 'repeat', original, source: 'nfc' }) : failure(committed.error, 'nfc'));
+        return settleTap(true, original ? event({ kind: 'repeat', original, source: 'nfc' }) : failure(committed.error, 'nfc'));
       }
-      if (!(await save(committed.value.card))) return publish(failure('storage', 'nfc'));
-      return publish(event({ kind: 'success', outcome: committed.value.outcome, source: 'nfc' }));
+      if (!(await save(committed.value.card))) return settleTap(true, failure('redeem-not-saved', 'nfc'));
+      return settleTap(true, event({ kind: 'success', outcome: committed.value.outcome, source: 'nfc' }));
     });
+
+  const spendOnCode = async (): Promise<Result<{ readonly link: string; readonly event: RedeemEvent }, CodeError>> => {
+    const card = await ensureLoaded();
+    if (!card) return err('storage');
+    const plan = planRedemption(card, cafe.rules);
+    if (!plan) return err('no-reward');
+    const committed = commitRedemption(card, plan, cafe.rules, { now: deps.now(), via: 'code' });
+    if (!committed.ok) return err('no-reward');
+    if (!(await save(committed.value.card))) return err('storage');
+    return ok({ link: buildRedeemLink(cafe.scheme, plan.request), event: committed.value.event });
+  };
 
   return {
     ...store,
 
     load: () => serial(async () => void (await ensureLoaded())),
 
-    tap: (uris, { useReward }) =>
+    tap: (uris) =>
       serial(async (): Promise<TapExchange> => {
         const handled = await handle(uris, 'nfc');
         if (handled.kind === 'done') {
           publish(handled.event);
           return { reply: handled.reply, finish: async () => handled.event };
         }
-        if (!useReward) {
+        // Checked and claimed in one step, with nothing awaited in between.
+        const { using, lastEvent } = store.getSnapshot();
+        if (!isOpen(using) || lastEvent !== null) {
           const closed = publish(failure('reward-closed', 'nfc'));
           return { reply: null, finish: async () => closed };
         }
+        apply({ type: 'send' });
         const { plan, trigger } = handled;
         return {
           reply: buildRedeemLink(cafe.scheme, plan.request),
-          finish: (delivered) => (delivered ? commit(plan, trigger) : Promise.resolve(publish(failure('not-delivered', 'nfc')))),
+          finish: (delivered) => (delivered ? commit(plan, trigger) : Promise.resolve(settleTap(false, failure('not-delivered', 'nfc')))),
         };
       }),
 
@@ -214,17 +246,19 @@ export function createCardStore(deps: CardStoreDeps): CardStore {
         return publish(handled.kind === 'done' ? handled.event : failure('tap-again', source));
       }),
 
-    redeemWithCode: () =>
-      serial(async () => {
-        const card = await ensureLoaded();
-        if (!card) return err('storage' as const);
-        const plan = planRedemption(card, cafe.rules);
-        if (!plan) return err('no-reward' as const);
-        const committed = commitRedemption(card, plan, cafe.rules, { now: deps.now(), via: 'code' });
-        if (!committed.ok) return err('no-reward' as const);
-        if (!(await save(committed.value.card))) return err('storage' as const);
-        return ok({ link: buildRedeemLink(cafe.scheme, plan.request), event: committed.value.event });
-      }),
+    openReward: () => apply({ type: 'open' }),
+    closeReward: () => apply({ type: 'close' }),
+
+    showCode: () => {
+      if (!isOpen(store.getSnapshot().using)) return Promise.resolve(err('busy' as const));
+      // Claimed now, before the save: a tap read meanwhile finds the reward busy.
+      apply({ type: 'make-code' });
+      return serial(async () => {
+        const result = await spendOnCode();
+        apply(result.ok ? { type: 'code-made', link: result.value.link } : { type: 'code-failed', error: result.error });
+        return result;
+      });
+    },
 
     codeFor(redeemed) {
       const request = requestForEvent(store.getSnapshot().card, redeemed);

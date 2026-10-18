@@ -95,9 +95,11 @@ export function describe(event: IntakeEvent, ctx: FeedbackContext): Feedback {
     case 'not-delivered':
       return problem('Hold still a little longer', 'Your phone moved away before it finished. Your stamps are still on your card — tap again.', 'Tap again');
     case 'tap-again':
-      return problem(`Tap again to use your ${rewardName}`, `In this app, tap your ${rewardName} ticket, then hold your phone to the counter phone once more.`, 'Tap again');
+      return problem(`Use your ${rewardName} from its ticket`, `In this app, tap your ${rewardName} ticket and use it from there.`, 'Open your ticket');
     case 'reward-closed':
-      return problem(`Open your ${rewardName} first`, `Tap your ${rewardName} ticket, then hold your phone to the counter phone again.`, `Open your ${rewardName} first`);
+      return problem(`Open your ${rewardName} first`, `Tap your ${rewardName} ticket, then tap the counter phone from there.`, `Open your ${rewardName} first`);
+    case 'redeem-not-saved':
+      return problem('Check the counter phone', `This phone couldn't save that it used your ${rewardName}. If the counter phone says verified, it's yours. Then free up some space on this phone.`, 'Check the counter phone');
     case 'unknown-key':
     case 'invalid-signature':
     case 'malformed':

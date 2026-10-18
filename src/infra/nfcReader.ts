@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import NfcManager, { NfcAdapter, NfcError, NfcTech, type NdefRecord as LibRecord } from 'react-native-nfc-manager';
+import NfcManager, { NfcAdapter, NfcError, NfcEvents, NfcTech, type NdefRecord as LibRecord } from 'react-native-nfc-manager';
 
 import { utf8Encode } from '../domain/bytes';
 import { encodeUriMessage, messageUris, type NdefRecord } from '../domain/ndef';
@@ -52,6 +52,22 @@ export async function getAvailability(): Promise<NfcAvailability> {
   } catch {
     return 'unsupported';
   }
+}
+
+/**
+ * Calls `listener` when NFC is switched on or off without leaving the app
+ * (Android quick settings). iOS can't switch NFC off. Returns an unsubscribe.
+ */
+export function onAvailabilityChange(listener: () => void): () => void {
+  if (Platform.OS !== 'android') return () => undefined;
+  let subscribed = true;
+  void ensureStarted()
+    .then(() => subscribed && NfcManager.setEventListener(NfcEvents.StateChanged, () => listener()))
+    .catch(() => undefined);
+  return () => {
+    subscribed = false;
+    NfcManager.setEventListener(NfcEvents.StateChanged, null);
+  };
 }
 
 export async function openNfcSettings(): Promise<void> {

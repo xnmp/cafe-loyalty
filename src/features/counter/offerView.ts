@@ -95,7 +95,7 @@ export function offerView(offer: ActiveOffer, now: number, ctx: OfferViewContext
     if (now - offer.readAt < ACK_GRACE_MS) return { ...base, stage: 'reading', title: 'Phone detected…', body: 'Hold still for a moment.' };
     return kind === 'stamp'
       ? { ...base, stage: 'delivered', title: 'Sent to their phone', body: 'Check their screen shows it, then tap Done.' }
-      : { ...base, stage: 'stalled', title: "Didn't hear back", body: `Ask them to open the ${reward} ticket in the app and tap again, or scan their code.` };
+      : { ...base, stage: 'stalled', title: "Didn't hear back", body: `Ask them to open the ${reward} ticket in the app and tap again (iPhone: press Tap the counter phone), or scan their code.` };
   }
 
   if (kind === 'redeem') {

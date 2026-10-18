@@ -1,13 +1,13 @@
 import { router } from 'expo-router';
 import { History, Info, Nfc, ScanLine, Smartphone } from 'lucide-react-native';
-import { useCallback, useMemo, useReducer } from 'react';
+import { useCallback, useMemo } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { cafe } from '../../config';
 import { summarize } from '../../domain/card';
 import { rewardsUnlocked } from '../../domain/intake';
 import { useStores } from '../../state/AppProviders';
-import type { IntakeEvent } from '../../state/cardStore';
+import { pausesReader } from '../../state/rewardUse';
 import { useStore } from '../../state/store';
 import { AppText, Button, IconButton, Screen } from '../../ui/primitives';
 import { Appear, NfcPulse } from '../../ui/motion';
@@ -16,7 +16,6 @@ import { StampCard } from '../../ui/StampCard';
 import { space, useTheme, withAlpha } from '../../ui/theme';
 import { describe, progressLine } from './feedback';
 import { FeedbackSheet } from './FeedbackSheet';
-import { closedFlow, pausesReader, redeemFlow, tapMayUseReward } from './redeemFlow';
 import { RedeemSheet } from './RedeemSheet';
 import { useTapToCollect, type TapController } from './useTapToCollect';
 
@@ -27,7 +26,7 @@ function greeting(date: Date): string {
 
 export function CardScreen() {
   const { card: cardStore } = useStores();
-  const { card, lastEvent, status } = useStore(cardStore);
+  const { card, lastEvent, status, using } = useStore(cardStore);
   const { stampsPerReward, rewardName } = cafe.rules;
   const summary = useMemo(() => summarize(card, cafe.rules), [card]);
 
@@ -35,22 +34,11 @@ export function CardScreen() {
     () => (lastEvent ? describe(lastEvent, { cafeName: cafe.name, rewardName, stampsPerReward, summary }) : null),
     [lastEvent, rewardName, stampsPerReward, summary],
   );
-  const [redeem, dispatch] = useReducer(redeemFlow, closedFlow);
   // Don't read the counter phone while feedback or a code is on screen.
-  const tap = useTapToCollect({ paused: feedback !== null || pausesReader(redeem), useReward: tapMayUseReward(redeem) });
-
-  const showCode = async () => {
-    if (redeem.kind !== 'ready') return;
-    dispatch({ type: 'show-code' });
-    const result = await cardStore.redeemWithCode();
-    dispatch(result.ok ? { type: 'code-made', link: result.value.link } : { type: 'code-failed', error: result.error });
-  };
+  const tap = useTapToCollect({ paused: feedback !== null || pausesReader(using) });
 
   const dismiss = useCallback(() => {
-    if (!lastEvent) return;
-    // Using the reward ends the redemption; after anything else (a stamp, a tap cut short) it's still open.
-    if (usedReward(lastEvent)) dispatch({ type: 'close' });
-    cardStore.dismiss(lastEvent.id);
+    if (lastEvent) cardStore.dismiss(lastEvent.id);
   }, [cardStore, lastEvent]);
 
   // While a completed card is being celebrated, keep it full with the reward lit;
@@ -94,7 +82,7 @@ export function CardScreen() {
 
         {rewardsShown > 0 ? (
           <View style={{ marginTop: space.lg }}>
-            <RewardTicket count={rewardsShown} rewardName={rewardName} onPress={() => dispatch({ type: 'open' })} />
+            <RewardTicket count={rewardsShown} rewardName={rewardName} onPress={cardStore.openReward} />
           </View>
         ) : null}
 
@@ -105,19 +93,16 @@ export function CardScreen() {
       <FeedbackSheet feedback={feedback} onDismiss={dismiss} />
       {/* Steps aside while a tap's feedback shows, then comes back unless the reward was used. */}
       <RedeemSheet
-        flow={redeem}
-        visible={redeem.kind !== 'closed' && feedback === null}
+        using={using}
+        visible={using !== null && feedback === null}
         count={summary.rewardsAvailable}
         tap={tap}
-        onShowCode={() => void showCode()}
-        onClose={() => dispatch({ type: 'close' })}
+        onShowCode={() => void cardStore.showCode()}
+        onClose={cardStore.closeReward}
       />
     </Screen>
   );
 }
-
-const usedReward = (event: IntakeEvent): boolean =>
-  (event.kind === 'success' && event.outcome.kind === 'redeemed') || (event.kind === 'repeat' && event.original.kind === 'redeem');
 
 function Unavailable({ onRetry }: { onRetry: () => void }) {
   return (
