@@ -3,7 +3,7 @@ import type { CafeConfig } from '../../src/domain/config';
 import { addPublicKey, nextKeyId, removeKey, renderProvisioningPage } from './cafeKeys';
 
 const fixture = (ids: readonly number[]): CafeConfig => ({
-  cafeId: 'test-cafe', name: 'Test Café', tagline: '', scheme: 'testcafe', bundleId: 'com.test.cafe',
+  cafeId: 'test-cafe', name: 'Test Café', shortName: 'Test Café', tagline: '', scheme: 'testcafe', bundleId: 'com.test.cafe',
   rules: { stampsPerReward: 8, maxStampsPerTap: 1, rewardName: 'drink' },
   contact: { address: '', hours: [], phone: '', website: '', instagram: '' },
   theme: { light: {} as CafeConfig['theme']['light'], dark: {} as CafeConfig['theme']['dark'] },

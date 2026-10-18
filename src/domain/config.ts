@@ -30,6 +30,8 @@ export interface CafeConfig {
   /** Lowercase slug; part of the token signature, so changing it invalidates outstanding tokens. */
   readonly cafeId: string;
   readonly name: string;
+  /** Home-screen label and tight headers; keep it to about 18 characters. */
+  readonly shortName: string;
   readonly tagline: string;
   /** Deep link scheme, lowercase letters/digits only. */
   readonly scheme: string;
@@ -64,8 +66,9 @@ export function validateConfig(c: CafeConfig): Result<CafeConfig, readonly strin
     if (!cond) problems.push(msg);
   };
 
-  check(/^[a-z0-9]+(-[a-z0-9]+)*$/.test(c.cafeId ?? ''), 'cafeId must be a lowercase slug like "corner-cafe"');
+  check(/^[a-z0-9]+(-[a-z0-9]+)*$/.test(c.cafeId ?? ''), 'cafeId must be a lowercase slug like "eastern-concourse"');
   check(typeof c.name === 'string' && c.name.trim().length > 0, 'name is required');
+  check(typeof c.shortName === 'string' && c.shortName.trim().length > 0, 'shortName is required');
   check(/^[a-z][a-z0-9]{1,31}$/.test(c.scheme ?? ''), 'scheme must be lowercase letters/digits, starting with a letter');
   check(/^[a-zA-Z][a-zA-Z0-9]*(\.[a-zA-Z][a-zA-Z0-9]*)+$/.test(c.bundleId ?? ''), 'bundleId must look like com.example.app');
   check(Number.isInteger(c.rules?.stampsPerReward) && c.rules.stampsPerReward >= 2 && c.rules.stampsPerReward <= 20,

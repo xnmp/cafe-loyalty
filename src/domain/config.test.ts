@@ -15,6 +15,7 @@ test('the real cafe.config.json validates', () => {
 const mutations: readonly [string, (config: Mutable<CafeConfig>) => void][] = [
   ['cafeId', (c) => { c.cafeId = 'Upper_Cafe'; }],
   ['name', (c) => { c.name = '  '; }],
+  ['shortName', (c) => { c.shortName = ''; }],
   ['scheme', (c) => { c.scheme = '1Cafe'; }],
   ['bundleId', (c) => { c.bundleId = 'invalid'; }],
   ['rules.stampsPerReward', (c) => { c.rules.stampsPerReward = 1; }],

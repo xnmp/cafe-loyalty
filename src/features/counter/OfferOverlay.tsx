@@ -84,7 +84,7 @@ export function OfferOverlay({ offer, onCancel, onDone, onShowQr, onScan }: Offe
               {view.title}
             </AppText>
             <AppText variant="body" tone="muted" align="center" style={{ marginTop: space.xs, maxWidth: 340 }}>
-              {view.stage === 'waiting' && offer.qrVisible && offer.nfc ? `Scan with the ${cafe.name} app, or tap phones.` : view.body}
+              {view.stage === 'waiting' && offer.qrVisible && offer.nfc ? `Scan with the ${cafe.shortName} app, or tap phones.` : view.body}
             </AppText>
           </View>
 

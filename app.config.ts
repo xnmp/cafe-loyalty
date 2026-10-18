@@ -14,7 +14,7 @@ const fraunces = [
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: cafe.name,
+  name: cafe.shortName,
   slug: cafe.cafeId,
   scheme: cafe.scheme,
   version: '1.0.0',
@@ -36,6 +36,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       foregroundImage: './assets/android-icon-foreground.png',
       monochromeImage: './assets/android-icon-monochrome.png',
     },
+    // Play needs a higher versionCode on every upload: scripts/build-play-bundle.sh
+    // sets one, and EAS builds set their own.
+    versionCode: process.env.ANDROID_VERSION_CODE ? Number(process.env.ANDROID_VERSION_CODE) : undefined,
     predictiveBackGestureEnabled: true,
     blockedPermissions: ['android.permission.RECORD_AUDIO'],
   },

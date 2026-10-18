@@ -33,12 +33,10 @@ lets any phone hand out stamps, so don't leave it lying around at the café.
 
 ## 2. Publish the privacy policy
 
-Both stores need a privacy policy URL. Same pattern as Ballast: make a public
-GitHub repo (for example `xnmp/cornercafe-privacy`), add
-`docs/privacy/index.html` as its `index.html`, and turn on Pages (Settings →
-Pages → Deploy from branch → `main`, root). The URL is
-`https://xnmp.github.io/cornercafe-privacy/`. Edit the café name and contact
-email in the file first if you changed them.
+Both stores need a privacy policy URL. This repo is public with GitHub Pages
+serving `docs/` from `master`, so the policy in `docs/privacy/index.html` is at
+<https://xnmp.github.io/cafe-loyalty/privacy/>. Edit the café name and contact
+email in the file if you change them, and push.
 
 ## 3. Link the project to Expo
 
@@ -127,11 +125,11 @@ Later updates, without the Console:
 The emulator can't do NFC, so this part needs two real phones.
 
 To test the Android phones before anything is on Play, install a local build on
-both: `adb install dist/corner-cafe-test.apk`, or copy the file to each phone and
+both: `adb install dist/test.apk`, or copy the file to each phone and
 open it. Make the build with `bunx expo prebuild --platform android`, then
 `cd android && ./gradlew assembleRelease`, then copy
 `android/app/build/outputs/apk/release/app-release.apk` to
-`dist/corner-cafe-test.apk`. That build is signed with the debug key, so a phone
+`dist/test.apk`. That build is signed with the debug key, so a phone
 must uninstall it before it can install the Play version. Uninstalling wipes the
 card, and on the counter phone it also wipes the spent-stamp record and the
 signing key. Set the counter phone up again afterwards (§6). iPhones need

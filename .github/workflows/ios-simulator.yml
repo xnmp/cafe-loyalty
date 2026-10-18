@@ -34,10 +34,13 @@ jobs:
         working-directory: ios
         run: pod install
 
+      # The Xcode project is named after the app (cafe.config.json shortName).
       - name: Build for the simulator
         run: |
+          PROJECT=$(basename ios/*.xcworkspace .xcworkspace)
+          echo "PROJECT=$PROJECT" >> "$GITHUB_ENV"
           xcodebuild -version
-          xcodebuild -workspace ios/CornerCafe.xcworkspace -scheme CornerCafe -configuration Release \
+          xcodebuild -workspace "ios/$PROJECT.xcworkspace" -scheme "$PROJECT" -configuration Release \
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO build > xcodebuild.log 2>&1 \
             || { grep -E "error:" xcodebuild.log | head -50; tail -80 xcodebuild.log; exit 1; }
@@ -47,12 +50,13 @@ jobs:
         run: |
           APP=$(find build/Build/Products/Release-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
           plutil -p "$APP/Info.plist" | grep -A3 -E 'NFCReaderUsageDescription|iso7816.select-identifiers'
-          grep -A4 'nfc.readersession.formats' ios/CornerCafe/CornerCafe.entitlements
+          grep -A4 'nfc.readersession.formats' "ios/$PROJECT/$PROJECT.entitlements"
 
       - name: Launch, open screens, screenshot
         run: |
           APP=$(find build/Build/Products/Release-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
           BUNDLE=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Info.plist")
+          SCHEME=$(jq -r .scheme cafe.config.json)
           DEVICE=$(xcrun simctl list devices available -j | jq -r '[.devices | to_entries[] | select(.key | test("iOS")) | .value[] | select(.name | test("^iPhone"))][0].udid')
           echo "device $DEVICE, bundle $BUNDLE"
           xcrun simctl boot "$DEVICE"
@@ -63,10 +67,10 @@ jobs:
           xcrun simctl io "$DEVICE" screenshot 1-card.png
           # Still running after launch means it didn't crash on start-up.
           xcrun simctl spawn "$DEVICE" launchctl list | grep "$BUNDLE"
-          xcrun simctl openurl "$DEVICE" cornercafe://about
+          xcrun simctl openurl "$DEVICE" "$SCHEME://about"
           sleep 6
           xcrun simctl io "$DEVICE" screenshot 2-about.png
-          xcrun simctl openurl "$DEVICE" cornercafe://history
+          xcrun simctl openurl "$DEVICE" "$SCHEME://history"
           sleep 6
           xcrun simctl io "$DEVICE" screenshot 3-history.png
           xcrun simctl spawn "$DEVICE" launchctl list | grep "$BUNDLE"

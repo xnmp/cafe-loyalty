@@ -75,7 +75,7 @@ export function CounterScreen({ credentials }: { credentials: StaffCredentials }
               Counter
             </AppText>
             <AppText variant="title" numberOfLines={1}>
-              {cafe.name}
+              {cafe.shortName}
             </AppText>
           </View>
           <IconButton icon={Settings} label="Counter settings" onPress={() => router.push('/counter/settings')} />

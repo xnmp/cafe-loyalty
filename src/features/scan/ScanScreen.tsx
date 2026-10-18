@@ -32,7 +32,7 @@ export function ScanScreen() {
   const scan = async (data: string) => {
     if (submitting.current) return;
     if (parseLink(cafe.scheme, data)?.kind !== 'token') {
-      showMessage(`That's not a ${cafe.name} code`);
+      showMessage("That code isn't one of ours");
       return;
     }
     submitting.current = true;

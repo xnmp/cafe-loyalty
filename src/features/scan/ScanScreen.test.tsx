@@ -31,7 +31,7 @@ describe('customer scan submission', () => {
   it('keeps scanning after an unrelated code and shows a useful message', async () => {
     const screen = await render(<ScanScreen />);
     await fireEvent(screen.getByLabelText('Scan result'), 'scan', 'https://example.com');
-    expect(screen.getByText(`That's not a ${cafe.name} code`)).toBeTruthy();
+    expect(screen.getByText("That code isn't one of ours")).toBeTruthy();
     expect(submitWithFeedback).not.toHaveBeenCalled();
     expect(router.back).not.toHaveBeenCalled();
   });

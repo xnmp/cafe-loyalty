@@ -28,7 +28,6 @@ function playHaptics(feedback: Feedback, stamps: number) {
 /** Describes an intake event against the card as it is now, and buzzes. */
 function feel(store: CardStore, event: IntakeEvent): Feedback {
   const feedback = describe(event, {
-    cafeName: cafe.name,
     rewardName: cafe.rules.rewardName,
     stampsPerReward: cafe.rules.stampsPerReward,
     summary: summarize(store.getSnapshot().card, cafe.rules),

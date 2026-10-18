@@ -1,8 +1,9 @@
 {
-  "cafeId": "corner-cafe",
-  "name": "Corner Café",
+  "cafeId": "eastern-concourse",
+  "name": "Eastern Concourse Cafe and Bakery",
+  "shortName": "Eastern Concourse",
   "tagline": "Coffee, baked goods & good mornings",
-  "scheme": "cornercafe",
+  "scheme": "easternconcourse",
   "bundleId": "md.chong.cafecard",
   "easProjectId": "",
   "rules": {
@@ -45,8 +46,8 @@
   },
   "keys": [
     {
-      "id": 2,
-      "publicKey": "slkhtU-VrMYfGHHFPhExWjHMLNYQVmKV2-xMjYPPcvg"
+      "id": 3,
+      "publicKey": "us1lsBNfbcaSuQVeBnsWJn_0PxZJl3jI8Yh-zFiT8Ns"
     }
   ]
 }

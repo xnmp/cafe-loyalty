@@ -64,10 +64,26 @@ function screenshot(png: Buffer, lines: readonly [string, string]): string {
   );
 }
 
+/** Splits a name into at most two lines, as evenly as its words allow. */
+function balancedLines(name: string): readonly string[] {
+  const words = name.trim().split(/\s+/);
+  if (name.length <= 14 || words.length < 2) return [name];
+  const splits = words.slice(1).map((_, i) => [words.slice(0, i + 1).join(' '), words.slice(i + 1).join(' ')]);
+  const longest = (lines: readonly string[]) => Math.max(...lines.map((l) => l.length));
+  return splits.reduce((best, s) => (longest(s) < longest(best) ? s : best));
+}
+
 /** Play feature graphic, 1024×500: the stamp mark beside the café's name. */
 function featureGraphic(): string {
   const [W, H] = [1024, 500];
   const mark = 360;
+  const x = 470;
+  const name = balancedLines(cafe.name);
+  // Fraunces Bold averages about 0.55em a character: a long name shrinks to fit beside the mark.
+  const size = Math.min(72, Math.floor((W - x - 48) / (0.55 * Math.max(...name.map((l) => l.length)))));
+  const lead = Math.round(size * 1.12);
+  const top = (H - (name.length * lead + 110)) / 2;
+  const below = top + name.length * lead;
   return doc(
     W,
     H,
@@ -75,9 +91,9 @@ function featureGraphic(): string {
     <g transform="translate(70 ${(H - mark) / 2})">
       <svg width="${mark}" height="${mark}" viewBox="0 0 ${mark} ${mark}">${stamp({ size: mark, r: 152, fill: theme.paper, ink: theme.accent, ring: theme.accent, speckle: theme.accent })}</svg>
     </g>
-    ${text(470, 232, 72, 700, theme.onAccent, cafe.name)}
-    ${text(472, 294, 31, 500, theme.onAccent, 'Tap your phone. Collect stamps.')}
-    ${text(472, 340, 31, 500, theme.onAccent, `Every ${freeEvery} drink is free.`)}`,
+    ${name.map((line, i) => text(x, top + size + i * lead, size, 700, theme.onAccent, line)).join('')}
+    ${text(x + 2, below + 62, 31, 500, theme.onAccent, 'Tap your phone. Collect stamps.')}
+    ${text(x + 2, below + 108, 31, 500, theme.onAccent, `Every ${freeEvery} drink is free.`)}`,
   );
 }
 

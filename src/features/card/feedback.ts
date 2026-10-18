@@ -20,7 +20,6 @@ export interface Feedback {
 }
 
 export interface FeedbackContext {
-  readonly cafeName: string;
   readonly rewardName: string;
   readonly stampsPerReward: number;
   /** Card summary after the event. */
@@ -37,7 +36,7 @@ export function progressLine(summary: CardSummary, stampsPerReward: number, rewa
 }
 
 export function describe(event: IntakeEvent, ctx: FeedbackContext): Feedback {
-  const { rewardName, stampsPerReward, summary, cafeName } = ctx;
+  const { rewardName, stampsPerReward, summary } = ctx;
 
   if (event.kind === 'success') {
     const o = event.outcome;
@@ -79,7 +78,7 @@ export function describe(event: IntakeEvent, ctx: FeedbackContext): Feedback {
 
   switch (event.error) {
     case 'not-ours':
-      return problem(`That's not a ${cafeName} code`, 'Hold your phone against the back of the counter phone, or scan the code on its screen.', 'Not a stamp code');
+      return problem("That code isn't one of ours", 'Hold your phone against the back of the counter phone, or scan the code on its screen.', 'Not a stamp code');
     case 'expired':
       return problem('That code has expired', 'Ask the barista to start a new stamp and try again.', 'Code expired');
     case 'not-yet-valid':

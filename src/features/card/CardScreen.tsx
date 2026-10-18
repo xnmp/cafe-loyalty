@@ -31,7 +31,7 @@ export function CardScreen() {
   const summary = useMemo(() => summarize(card, cafe.rules), [card]);
 
   const feedback = useMemo(
-    () => (lastEvent ? describe(lastEvent, { cafeName: cafe.name, rewardName, stampsPerReward, summary }) : null),
+    () => (lastEvent ? describe(lastEvent, { rewardName, stampsPerReward, summary }) : null),
     [lastEvent, rewardName, stampsPerReward, summary],
   );
   // Don't read the counter phone while feedback or a code is on screen.
@@ -72,7 +72,7 @@ export function CardScreen() {
         </View>
 
         <StampCard
-          cafeName={cafe.name}
+          cafeName={cafe.shortName}
           stampsPerReward={stampsPerReward}
           filled={filled}
           staggerFrom={staggerFrom}

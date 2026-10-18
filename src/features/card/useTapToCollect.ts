@@ -81,7 +81,7 @@ export function useTapToCollect({ paused }: { paused: boolean }): TapController 
   const startSession = useCallback(() => {
     if (reading) return;
     setReading(true);
-    const message = `Hold the top of your iPhone near the back of the ${cafe.name} counter phone.`;
+    const message = `Hold the top of your iPhone near the back of the ${cafe.shortName} counter phone.`;
     void readOnce(message, (uris) => tapWithFeedback(card, uris)).finally(() => setReading(false));
   }, [reading, card]);
 

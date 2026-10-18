@@ -4,11 +4,13 @@ Edit the café name if you changed it in `cafe.config.json`.
 
 ## App name (30 chars max)
 
-Corner Café
+Eastern Concourse Cafe
+
+(The full name, Eastern Concourse Cafe and Bakery, is 33 characters: too long for either store.)
 
 ## Short description (Play, 80 chars max)
 
-Your Corner Café stamp card. Tap your phone at the counter — every 10th drink free.
+Your Eastern Concourse stamp card. Tap at the counter — every 10th drink free.
 
 ## Subtitle (App Store, 30 chars max)
 
@@ -16,11 +18,11 @@ Tap. Collect. Free coffee.
 
 ## Promotional text (App Store, 170 chars max)
 
-The Corner Café stamp card, on your phone. Tap at the counter to collect stamps. Your tenth drink is on us. No account, no sign-up.
+The Eastern Concourse stamp card, on your phone. Tap at the counter to collect stamps. Your tenth drink is on us. No account, no sign-up.
 
 ## Full description
 
-The Corner Café loyalty card, without the paper.
+The Eastern Concourse Cafe and Bakery loyalty card, without the paper.
 
 Order as usual, then hold your phone to the counter phone. A stamp lands on your card with a satisfying thunk. Collect nine and your next drink is on us.
 
@@ -28,7 +30,6 @@ Order as usual, then hold your phone to the counter phone. A stamp lands on your
 • No NFC? Scan the code on the counter screen instead
 • Your free drink waits on your card until you want it
 • See every stamp and reward in your history
-• Café details: address, opening hours, how to find us
 
 Private by design: no account, no sign-up, no email, no tracking. Your card lives only on your phone, and the app never sends anything over the internet.
 

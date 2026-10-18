@@ -24,7 +24,7 @@ User-facing docs: [README](README.md), [release guide](docs/RELEASE.md),
   findings were recovered from the transcript) and four review rounds of the
   "open the reward before a tap can spend it" change. What's left is listed
   as accepted risks, each with its limit, in `docs/ARCHITECTURE.md`.
-- Test build for the two-phone check: `dist/corner-cafe-test.apk` (current as
+- Test build for the two-phone check: `dist/test.apk` (current as
   of the last commit).
 - Signing key: key 2 is the only trusted key (key 1 retired, its secret
   deleted). The secret and staff QR are in `cafe-secrets/` (gitignored, keep
@@ -70,7 +70,7 @@ HCE unit tests (from `android/` after `bunx expo prebuild --platform android`):
 `./gradlew :cafe-hce:testDebugUnitTest`.
 
 A sideloadable test build for the two-phone NFC check is at
-`dist/corner-cafe-test.apk` (gitignored). It's signed with the debug key.
+`dist/test.apk` (gitignored). It's signed with the debug key.
 RELEASE.md §7 explains how to rebuild it and what uninstalling it wipes. The
 local Gradle build takes about 11 minutes and a lot of RAM. Use `--no-daemon`
 so nothing stays resident afterwards.

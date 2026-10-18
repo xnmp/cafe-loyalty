@@ -7,7 +7,7 @@ import { describe, progressLine } from './feedback';
 
 const before = summarize(emptyCard, rules);
 const partial = summarize(cardOf(4), rules);
-const ctx = { cafeName: 'Test Cafe', rewardName: 'free drink', stampsPerReward: 9, summary: partial };
+const ctx = { rewardName: 'free drink', stampsPerReward: 9, summary: partial };
 const eventBase = { id: 1, source: 'nfc' as const };
 
 test.each([
@@ -39,7 +39,7 @@ test.each([
 });
 
 const problems: Record<IntakeProblem, readonly [string, string, string]> = {
-  'not-ours': ["That's not a Test Cafe code", 'Hold your phone against the back of the counter phone, or scan the code on its screen.', 'Not a stamp code'],
+  'not-ours': ["That code isn't one of ours", 'Hold your phone against the back of the counter phone, or scan the code on its screen.', 'Not a stamp code'],
   expired: ['That code has expired', 'Ask the barista to start a new stamp and try again.', 'Code expired'],
   'not-yet-valid': ["Your phone's clock looks off", 'Turn on automatic date & time in Settings, then try again.', 'Check date & time'],
   'already-used': ['That code was already used', 'Each code works once. Ask the barista for a new one.', 'Code already used'],
