@@ -2,7 +2,8 @@
 
 Where this project stands, for whoever picks it up next (human or agent).
 User-facing docs: [README](README.md), [release guide](docs/RELEASE.md),
-[architecture](docs/ARCHITECTURE.md).
+[architecture](docs/ARCHITECTURE.md). The owner's to-do list for getting to
+production is [NEXT_STEP.md](NEXT_STEP.md).
 
 ## State (2026-10-18)
 
@@ -43,10 +44,10 @@ User-facing docs: [README](README.md), [release guide](docs/RELEASE.md),
   (`docs/review/`). It is never trusted: config validation, `keyRingOf` and
   the key helpers all refuse it.
 - Google Play: every App content declaration is filed, and the store listing is
-  complete (graphics declared as AI-made). Internal testing is live for the
-  owner's email (1.0.0); 1.0.1 goes to internal next. The closed test, with
-  the testers Google Group, has a draft release and still has to be sent for
-  review from Publishing overview.
+  complete (graphics declared as AI-made). Internal testing is live with
+  1.0.1 (29872142) for the owner's email. The closed test (1.0.1, Australia,
+  the testers Google Group, feedback to the support group) was sent for review
+  on 2026-10-19 with the store listing and app content.
   `docs/RELEASE.md` §4 has the state and the road to production (12 testers for
   14 days). Bundles are built locally with `scripts/build-play-bundle.sh`, not
   EAS.
