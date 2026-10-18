@@ -83,14 +83,15 @@ async function readSecret(root: string, config: CafeConfig, filename: string): P
   const code = (await readFile(join(root, 'cafe-secrets', filename), 'utf8')).trim();
   const parsed = parseStaffCode(code, { cafeId: config.cafeId, keys: keyRingOf(config) });
   if (!parsed.ok) throw new Error(`${filename}: ${parsed.error} (secret must match a configured public key)`);
+  if (parsed.value.demo) throw new Error(`${filename}: that's the public demo code, not a secret`);
   if (parsed.value.keyId !== id) throw new Error(`${filename}: code key id does not match filename`);
   return { id, code };
 }
 
-async function provisioningHtml(config: CafeConfig, id: number, code: string, demo = false): Promise<string> {
+async function provisioningHtml(config: CafeConfig, id: number, code: string): Promise<string> {
   const qrSvg = await QRCode.toString(code, { type: 'svg', errorCorrectionLevel: 'M', margin: 1 });
   return renderProvisioningPage({ cafeName: config.name, cafeId: config.cafeId, keyId: id,
-    staffCode: code, qrSvg, generatedAt: new Date().toISOString(), demo });
+    staffCode: code, qrSvg, generatedAt: new Date().toISOString() });
 }
 
 async function main(): Promise<void> {
@@ -172,7 +173,7 @@ async function main(): Promise<void> {
     case 'demo': {
       const dir = join(root, 'docs', 'review');
       await mkdir(dir, { recursive: true });
-      await replaceFile(join(dir, 'index.html'), await provisioningHtml(config, DEMO_KEY_ID, demoStaffCode(config.cafeId), true), 0o644);
+      await replaceFile(join(dir, 'index.html'), await provisioningHtml(config, DEMO_KEY_ID, demoStaffCode(config.cafeId)), 0o644);
       console.log(`Wrote ${join(dir, 'index.html')}. It's safe to publish: customers' apps reject demo stamps.`);
     }
   }

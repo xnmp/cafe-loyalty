@@ -97,6 +97,17 @@ but nothing it says about that card is trusted when a reward is handed out.
 - The counter phone's secret is provisioned by scanning a staff QR code made
   by `bun run setup-cafe`; it is stored in SecureStore (excluded from backups)
   and never leaves the device.
+- The **demo staff code** (`src/domain/provisioning.ts`) is public on purpose:
+  store reviewers need to reach counter mode. It is key id 0 with an all-zero
+  seed, and nothing ever trusts it. `keyRingOf` drops it, config validation
+  and `setup-cafe` refuse it, and `parseStaffCode` won't accept it under any
+  other id. So customers' cards reject its stamps (`unknown-key`), and a demo
+  counter can't start a redemption, which would ask phones for real proofs.
+  Its stamps stay out of the day's totals. Only a customer phone can be set
+  up as a counter: re-provisioning needs Stop using as counter first, which
+  needs the PIN. That way nobody at an unlocked counter can swap in the demo
+  code and lock the café out. `bun run setup-cafe demo` writes its page to
+  `docs/review/` (published on GitHub Pages).
 
 ## Transport
 

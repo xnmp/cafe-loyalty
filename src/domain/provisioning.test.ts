@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 
 import { toBase64Url } from './bytes';
-import { buildStaffCode, DEMO_KEY_ID, demoStaffCode, parseStaffCode } from './provisioning';
+import { buildStaffCode, DEMO_KEY_ID, DEMO_PUBLIC_KEY, demoStaffCode, parseStaffCode } from './provisioning';
 import { keyPairFromSeed } from './token';
 
 const seed = new Uint8Array(32).fill(5);
@@ -53,7 +53,9 @@ test("the demo code still belongs to one café", () => {
   expect(parseStaffCode(demoStaffCode('other-cafe'), expected)).toEqual({ ok: false, error: 'wrong-cafe' });
 });
 
-test('only the demo seed under the demo id is the demo', () => {
+test('only the demo seed under the demo id is the demo, and it is never trusted under another id', () => {
   expect(parseStaffCode(buildStaffCode(expected.cafeId, 7, new Uint8Array(32)), expected)).toEqual({ ok: false, error: 'untrusted-key' });
+  const trustingDemo = { ...expected, keys: new Map([[7, DEMO_PUBLIC_KEY]]) };
+  expect(parseStaffCode(buildStaffCode(expected.cafeId, 7, new Uint8Array(32)), trustingDemo)).toEqual({ ok: false, error: 'untrusted-key' });
   expect(parseStaffCode(buildStaffCode(expected.cafeId, DEMO_KEY_ID, seed), expected)).toEqual({ ok: false, error: 'untrusted-key' });
 });

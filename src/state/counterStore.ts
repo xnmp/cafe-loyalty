@@ -232,7 +232,8 @@ export function createCounterStore(deps: CounterStoreDeps): CounterStore {
         const record = qrVisible ? { ...created.record, shownAsQr: true } : created.record;
         return {
           ...s,
-          log: logOffer(log, record, now),
+          // Demo stamps count for nothing, so they stay out of the day's totals.
+          log: credentials.demo ? log : logOffer(log, record, now),
           offer: { record, link: created.link, startedAt: now, expiresAt: now + OFFER_TTL_MS, phase: 'waiting', readAt: null, nfc, qrVisible, outcome: null },
         };
       });

@@ -3,6 +3,8 @@ import { expect, jest, test } from '@jest/globals';
 import { buildAckLink, buildRedeemLink } from '../domain/link';
 import { decodeMessage, encodeUriMessage, messageUris } from '../domain/ndef';
 import { planRedemption, type RegistryView } from '../domain/redemption';
+import { statsBetween } from '../domain/counter';
+import { demoStaffCode, parseStaffCode } from '../domain/provisioning';
 import { cafe, cardOf, deferred, keys, memoryStorage, nonce, now, pair, seed, stamp, token } from '../testing/protocol.test-utils';
 import { COUNTER_KEY, createCounterStore, type CounterStore, type OfferOutcome, type RedemptionRegistry } from './counterStore';
 import { createMemoryRegistry } from './testing/memoryRegistry';
@@ -263,4 +265,17 @@ test('unreadable storage still becomes ready but never overwrites the unreadable
   expect(store.getSnapshot().log.redemptions).toHaveLength(1);
   expect(writes).toHaveLength(0);
   expect(raw.get(COUNTER_KEY)).toBe('unreadable data');
+});
+
+test("a demo counter's stamps stay out of the day's totals and aren't saved", async () => {
+  const demo = parseStaffCode(demoStaffCode(cafe.cafeId), { cafeId: cafe.cafeId, keys });
+  if (!demo.ok) throw new Error('demo code rejected');
+  const { store, writes } = setup(false);
+  await store.load();
+  store.offer(demo.value, 'stamp', 3);
+  expect(active(store).qrVisible).toBe(true);
+  expect(statsBetween(store.getSnapshot().log, 0, Number.MAX_SAFE_INTEGER)).toEqual({ stamps: 0, rewards: 0 });
+  expect(writes.filter((w) => w.key === COUNTER_KEY)).toEqual([]);
+  store.offer(demo.value, 'redeem', 1);
+  expect(active(store).record.kind).toBe('stamp');
 });

@@ -102,11 +102,13 @@ export function validateConfig(c: CafeConfig): Result<CafeConfig, readonly strin
   return problems.length === 0 ? ok(c) : err(problems);
 }
 
+/** The keys customers trust. Never the demo key, even in a config that skipped validation. */
 export function keyRingOf(c: CafeConfig): KeyRing {
   return new Map(
     c.keys.flatMap((k) => {
       const bytes = fromBase64Url(k.publicKey);
-      return bytes && bytes.length === 32 ? [[k.id, bytes] as const] : [];
+      const usable = bytes && bytes.length === 32 && k.id !== DEMO_KEY_ID && !bytesEqual(bytes, DEMO_PUBLIC_KEY);
+      return usable ? [[k.id, bytes] as const] : [];
     }),
   );
 }

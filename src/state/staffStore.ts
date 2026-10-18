@@ -40,7 +40,8 @@ export interface StaffStore extends Store<StaffState> {
   load(): Promise<void>;
   /** Validates a scanned/pasted staff code without saving anything. */
   checkCode(code: string): Result<StaffCredentials, StaffCodeError>;
-  provision(code: string, pin: string): Promise<Result<void, StaffCodeError | 'invalid-pin'>>;
+  /** Customer phones only: a counter must be left (with its PIN) before it can be set up again. */
+  provision(code: string, pin: string): Promise<Result<void, StaffCodeError | 'invalid-pin' | 'already-counter'>>;
   checkPin(pin: string): boolean;
   changePin(current: string, next: string): Promise<Result<void, 'wrong-pin' | 'invalid-pin'>>;
   /** Turns this device back into a customer phone. Requires the PIN. */
@@ -90,6 +91,8 @@ export function createStaffStore(deps: StaffStoreDeps): StaffStore {
     checkCode: (code) => parseStaffCode(code, expected),
 
     async provision(code, pin) {
+      // Otherwise anyone at an unlocked counter could swap in the public demo code and lock the café out.
+      if (store.getSnapshot().status !== 'customer') return err('already-counter');
       const creds = parseStaffCode(code, expected);
       if (!creds.ok) return creds;
       if (!isValidPin(pin)) return err('invalid-pin');

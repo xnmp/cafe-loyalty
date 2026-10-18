@@ -83,3 +83,10 @@ test('keyRingOf keeps every valid key, including id boundaries', () => {
   expect(ring.size).toBe(3);
   for (const { id, pair } of pairs) expect(ring.get(id)).toEqual(pair.publicKey);
 });
+
+test("keyRingOf never trusts the demo key, even in a config that skipped validation", () => {
+  const config = copy();
+  const real = keyPairFromSeed(new Uint8Array(32).fill(7)).publicKey;
+  config.keys = [{ id: 0, publicKey: toBase64Url(real) }, { id: 5, publicKey: toBase64Url(DEMO_PUBLIC_KEY) }, { id: 1, publicKey: toBase64Url(real) }];
+  expect([...keyRingOf(config).keys()]).toEqual([1]);
+});

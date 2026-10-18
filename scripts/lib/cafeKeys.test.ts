@@ -1,5 +1,6 @@
 import { fromBase64Url } from '../../src/domain/bytes';
 import type { CafeConfig } from '../../src/domain/config';
+import { DEMO_PUBLIC_KEY, demoStaffCode } from '../../src/domain/provisioning';
 import { addPublicKey, nextKeyId, removeKey, renderProvisioningPage } from './cafeKeys';
 
 const fixture = (ids: readonly number[]): CafeConfig => ({
@@ -41,8 +42,11 @@ describe('addPublicKey', () => {
   test('rejects duplicate ids', () => {
     expect(() => addPublicKey(fixture([1]), 1, new Uint8Array(32))).toThrow(/already exists/);
   });
-  test.each([-1, 256, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER])('rejects invalid id %s', (id) => {
-    expect(() => addPublicKey(fixture([1]), id, new Uint8Array(32))).toThrow(/0–255/);
+  test.each([-1, 0, 256, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER])('rejects invalid id %s', (id) => {
+    expect(() => addPublicKey(fixture([1]), id, new Uint8Array(32))).toThrow(/1–255/);
+  });
+  test('refuses to trust the public demo key', () => {
+    expect(() => addPublicKey(fixture([1]), 2, DEMO_PUBLIC_KEY)).toThrow(/demo key/);
   });
   test.each([0, 31, 33, 100_000])('rejects public key length %s', (length) => {
     expect(() => addPublicKey(fixture([1]), 2, new Uint8Array(length))).toThrow(/32 bytes/);
@@ -82,12 +86,18 @@ describe('renderProvisioningPage', () => {
     }
     expect(html).not.toMatch(/<(script|link|img)\b|@import|url\(/i);
   });
-  test('the demo page says it is safe to share instead of warning', () => {
-    const html = renderProvisioningPage({ ...page, keyId: 0, demo: true });
-    for (const text of ['Counter mode demo', 'Key id: 0 (demo)', 'safe to share', 'reject its stamps', page.staffCode, 'Scan staff code']) {
-      expect(html).toContain(text);
+  test('only the demo code itself is called safe to share', () => {
+    const demoCode = demoStaffCode(page.cafeId);
+    const demo = renderProvisioningPage({ ...page, keyId: 0, staffCode: demoCode });
+    for (const text of ['Counter mode demo', 'Key id: 0 (demo)', 'safe to share', 'reject its stamps', demoCode, 'Scan staff code']) {
+      expect(demo).toContain(text);
     }
-    expect(html).not.toContain('PRIVATE KEY');
+    expect(demo).not.toContain('PRIVATE KEY');
+    for (const staffCode of [page.staffCode, demoStaffCode('other-cafe')]) {
+      const html = renderProvisioningPage({ ...page, keyId: 0, staffCode });
+      expect(html).toContain('PRIVATE KEY');
+      expect(html).not.toContain('safe to share');
+    }
   });
   test('escapes every text field while preserving the trusted QR SVG markup', () => {
     const unsafe = `<script>&"'`;

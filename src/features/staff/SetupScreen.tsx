@@ -4,14 +4,18 @@ import { useEffect, useReducer, useRef, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { useStores } from '../../state/AppProviders';
+import { useStore } from '../../state/store';
 import { PinPad } from '../../ui/PinPad';
 import { AppText, Button, Screen, ScreenHeader } from '../../ui/primitives';
 import { radius, space, type, useTheme, withAlpha } from '../../ui/theme';
 import { QrScanner } from '../scan/QrScanner';
 import { initialSetup, setupReducer, staffCodeMessage } from './setupMachine';
 
+const alreadyCounterMessage = 'To set it up with a different staff code, choose Stop using as counter in Counter settings first.';
+
 export function SetupScreen() {
   const { staff } = useStores();
+  const alreadyCounter = useStore(staff).status === 'counter';
   const { color } = useTheme();
   const [state, dispatch] = useReducer(setupReducer, initialSetup);
   const [pastedCode, setPastedCode] = useState('');
@@ -42,7 +46,7 @@ export function SetupScreen() {
     try {
       const result = await staff.provision(next.code, next.pin);
       if (!result.ok) {
-        dispatch({ type: 'failed', message: result.error === 'invalid-pin' ? 'Choose a four-digit PIN.' : staffCodeMessage[result.error] });
+        dispatch({ type: 'failed', message: result.error === 'invalid-pin' ? 'Choose a four-digit PIN.' : result.error === 'already-counter' ? alreadyCounterMessage : staffCodeMessage[result.error] });
         return;
       }
       if (!active.current) return;
@@ -60,7 +64,13 @@ export function SetupScreen() {
   return (
     <Screen>
       <ScreenHeader title="Counter setup" backIcon={X} onBack={() => { active.current = false; router.back(); }} />
-      {state.step === 'pin' || state.step === 'confirm-pin' ? (
+      {alreadyCounter && state.step !== 'done' ? (
+        <View style={[styles.content, styles.intro]}>
+          <AppText variant="title" align="center" accessibilityRole="header">This is already the counter phone</AppText>
+          <AppText tone="muted" align="center">{alreadyCounterMessage}</AppText>
+          <Button label="Close" kind="secondary" onPress={() => router.back()} />
+        </View>
+      ) : state.step === 'pin' || state.step === 'confirm-pin' ? (
         <PinPad key={state.step} title={state.step === 'pin' ? 'Choose a staff PIN' : 'Enter it again'} subtitle={state.step === 'pin' ? "You'll need it to change settings or stop using this phone as the counter." : undefined} error={state.step === 'pin' ? state.error : undefined} onComplete={(pin) => void completePin(pin)} disabled={busy} />
       ) : state.step === 'done' ? (
         <View style={styles.center}><AppText tone="muted" accessibilityLiveRegion="polite">Setting up the counter…</AppText></View>

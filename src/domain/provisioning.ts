@@ -51,7 +51,8 @@ export function parseStaffCode(
   if (cafeId !== expected.cafeId) return err('wrong-cafe');
   const keyId = Number(keyIdText);
   const pair = keyPairFromSeed(seed);
-  if (keyId === DEMO_KEY_ID && bytesEqual(pair.publicKey, DEMO_PUBLIC_KEY)) return ok({ keyId, seed, ...pair, demo: true });
+  // The demo key is the demo under its own id only, and never trusted under another.
+  if (bytesEqual(pair.publicKey, DEMO_PUBLIC_KEY)) return keyId === DEMO_KEY_ID ? ok({ keyId, seed, ...pair, demo: true }) : err('untrusted-key');
   const trusted = expected.keys.get(keyId);
   if (!trusted || !bytesEqual(trusted, pair.publicKey)) return err('untrusted-key');
   return ok({ keyId, seed, ...pair, demo: false });
