@@ -7,7 +7,7 @@ import { cafe, cardOf, deferred, keys, memoryStorage, nonce, now, pair, seed, st
 import { COUNTER_KEY, createCounterStore, type CounterStore, type OfferOutcome, type RedemptionRegistry } from './counterStore';
 import { createMemoryRegistry } from './testing/memoryRegistry';
 
-const credentials = { keyId: 1, ...pair, seed };
+const credentials = { keyId: 1, ...pair, seed, demo: false };
 const plan = planRedemption(cardOf(4, 5), cafe.rules)!;
 const code = buildRedeemLink(cafe.scheme, plan.request);
 function setup(available = true, registry = createMemoryRegistry()) {

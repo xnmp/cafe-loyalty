@@ -1,12 +1,12 @@
 import Constants from 'expo-constants';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
-import { AtSign, Clock, Coffee, Gift, Globe, MapPin, Nfc, Phone, ShieldCheck, type LucideIcon } from 'lucide-react-native';
+import { AtSign, Clock, Coffee, ExternalLink, Gift, Globe, MapPin, Nfc, Phone, ShieldCheck, type LucideIcon } from 'lucide-react-native';
 import { useState } from 'react';
 import { Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { cafe } from '../../config';
-import { AppText, Group, Row, Screen, ScreenHeader } from '../../ui/primitives';
+import { AppText, Button, Group, Row, Screen, ScreenHeader } from '../../ui/primitives';
 import { radius, space, useTheme } from '../../ui/theme';
 import { addressLink, instagramLink, ordinal, phoneLink, websiteLink } from './contactLinks';
 
@@ -19,8 +19,9 @@ interface ContactRow {
 
 export function AboutScreen() {
   const { color } = useTheme();
-  const [linkError, setLinkError] = useState<string | null>(null);
-  const { contact, rules } = cafe;
+  // The link that just failed to open, so its error shows beside it.
+  const [failedLink, setFailedLink] = useState<string | null>(null);
+  const { contact, rules, privacyPolicyUrl } = cafe;
   const hours = contact.hours.map((line) => line.trim()).filter(Boolean).join(' · ');
   const rows: ContactRow[] = [
     { title: 'Address', detail: contact.address.trim(), icon: MapPin, url: addressLink(contact.address, Platform.OS) },
@@ -30,13 +31,17 @@ export function AboutScreen() {
     { title: 'Instagram', detail: contact.instagram.trim(), icon: AtSign, url: instagramLink(contact.instagram) },
   ].filter((row) => row.detail.length > 0);
   const openLink = async (url: string) => {
-    setLinkError(null);
+    setFailedLink(null);
     try {
       await Linking.openURL(url);
     } catch {
-      setLinkError("Couldn't open that link on this phone.");
+      setFailedLink(url);
     }
   };
+  const linkError = (urls: readonly (string | null | undefined)[]) =>
+    failedLink !== null && urls.includes(failedLink) ? (
+      <AppText variant="caption" tone="muted" accessibilityLiveRegion="polite">Couldn’t open that link on this phone.</AppText>
+    ) : null;
   const version = Constants.expoConfig?.version ?? '—';
 
   return (
@@ -57,7 +62,7 @@ export function AboutScreen() {
                   onPress={row.url ? () => { if (row.url) void openLink(row.url); } : undefined} />
               ))}
             </Group>
-            {linkError ? <AppText variant="caption" tone="muted" accessibilityLiveRegion="polite">{linkError}</AppText> : null}
+            {linkError(rows.map((row) => row.url))}
           </View>
         ) : null}
 
@@ -76,6 +81,10 @@ export function AboutScreen() {
           </View>
           <AppText variant="title" accessibilityRole="header">Your privacy</AppText>
           <AppText tone="muted">Your card lives only on this phone. No account, no sign-up, no tracking. When you tap, the counter phone only sees your stamp count. Your card is included in your phone’s normal backups.</AppText>
+          {privacyPolicyUrl ? (
+            <Button kind="ghost" icon={ExternalLink} label="Read the privacy policy" onPress={() => void openLink(privacyPolicyUrl)} style={{ alignSelf: 'flex-start', paddingHorizontal: 0, height: 36 }} />
+          ) : null}
+          {linkError([privacyPolicyUrl])}
         </Group>
 
         <Pressable

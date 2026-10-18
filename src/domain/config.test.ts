@@ -3,6 +3,7 @@ import { expect, test } from '@jest/globals';
 import realConfig from '../../cafe.config.json';
 import { toBase64Url } from './bytes';
 import { keyRingOf, validateConfig, type CafeConfig } from './config';
+import { DEMO_PUBLIC_KEY } from './provisioning';
 import { keyPairFromSeed } from './token';
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] extends readonly (infer U)[] ? Mutable<U>[] : T[K] extends object ? Mutable<T[K]> : T[K] };
@@ -18,6 +19,7 @@ const mutations: readonly [string, (config: Mutable<CafeConfig>) => void][] = [
   ['shortName', (c) => { c.shortName = ''; }],
   ['scheme', (c) => { c.scheme = '1Cafe'; }],
   ['bundleId', (c) => { c.bundleId = 'invalid'; }],
+  ['privacyPolicyUrl', (c) => { c.privacyPolicyUrl = 'http://example.com/privacy'; }],
   ['rules.stampsPerReward', (c) => { c.rules.stampsPerReward = 1; }],
   ['rules.stampsPerReward', (c) => { c.rules.stampsPerReward = 21; }],
   ['rules.stampsPerReward', (c) => { c.rules.stampsPerReward = 9.5; }],
@@ -26,8 +28,9 @@ const mutations: readonly [string, (config: Mutable<CafeConfig>) => void][] = [
   ['rules.maxStampsPerTap', (c) => { c.rules.maxStampsPerTap = 1.5; }],
   ['rules.rewardName', (c) => { c.rules.rewardName = ''; }],
   ['keys', (c) => { c.keys = []; }],
-  ...[-1, 256, 1.5].map((id): [string, (config: Mutable<CafeConfig>) => void] => ['key id', (c) => { c.keys[0].id = id; }]),
+  ...[-1, 0, 256, 1.5].map((id): [string, (config: Mutable<CafeConfig>) => void] => ['key id', (c) => { c.keys[0].id = id; }]),
   ['duplicate key id', (c) => { c.keys.push({ ...c.keys[0] }); }],
+  ['public demo key', (c) => { c.keys[0].publicKey = toBase64Url(DEMO_PUBLIC_KEY); }],
   ...['!', '', toBase64Url(new Uint8Array(31)), toBase64Url(new Uint8Array(33))].map((publicKey): [string, (config: Mutable<CafeConfig>) => void] => ['publicKey', (c) => { c.keys[0].publicKey = publicKey; }]),
 ];
 
@@ -73,7 +76,7 @@ test.each([
 
 test('keyRingOf keeps every valid key, including id boundaries', () => {
   const config = copy();
-  const pairs = [0, 1, 255].map((id) => ({ id, pair: keyPairFromSeed(new Uint8Array(32).fill(id)) }));
+  const pairs = [1, 2, 255].map((id) => ({ id, pair: keyPairFromSeed(new Uint8Array(32).fill(id)) }));
   config.keys = pairs.map(({ id, pair }) => ({ id, publicKey: toBase64Url(pair.publicKey) }));
   expect(validateConfig(config).ok).toBe(true);
   const ring = keyRingOf(config);

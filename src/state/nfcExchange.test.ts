@@ -4,6 +4,7 @@ import { summarize } from '../domain/card';
 import { decodeMessage, encodeUriMessage, messageUris } from '../domain/ndef';
 import { MAX_PROOFS, type RedemptionRequest } from '../domain/redemption';
 import { buildRedeemLink } from '../domain/link';
+import { demoStaffCode, parseStaffCode } from '../domain/provisioning';
 import { cafe, keys, memoryStorage, now, pair, seed, token } from '../testing/protocol.test-utils';
 import { createCardStore, type CardStore, type IntakeEvent } from './cardStore';
 import { createCounterStore, type CounterStore, type OfferOutcome } from './counterStore';
@@ -19,7 +20,7 @@ import { createMemoryRegistry } from './testing/memoryRegistry';
 /** Largest NDEF message the counter's emulated file holds: 4096 bytes minus the 2-byte length. */
 const TAG_CAPACITY = 4096 - 2;
 const DAY = 24 * 60 * 60 * 1000;
-const credentials = { keyId: 1, ...pair, seed };
+const credentials = { keyId: 1, ...pair, seed, demo: false };
 
 function world() {
   const clock = { now };
@@ -205,4 +206,18 @@ test('a phone with no reward is told so, and the counter shows why', async () =>
 test('the largest possible redemption still fits on the counter phone’s emulated tag', () => {
   const request: RedemptionRequest = { requestId: 'AAAAAAAAAAAAAAAA', proofs: Array.from({ length: MAX_PROOFS }, (_, i) => token(i + 1, 1)) };
   expect(encodeUriMessage(buildRedeemLink(cafe.scheme, request)).length).toBeLessThanOrEqual(TAG_CAPACITY);
+});
+
+test("a demo counter's stamps don't land on a customer's card, and it can't take a free drink", async () => {
+  const { counter, customer } = await setup();
+  const demo = parseStaffCode(demoStaffCode(cafe.cafeId), { cafeId: cafe.cafeId, keys });
+  if (!demo.ok) throw new Error('demo code rejected');
+  counter.store.offer(demo.value, 'stamp', 3);
+  const result = await tap(counter, customer.store);
+  expect(result?.event).toMatchObject({ kind: 'error', error: 'unknown-key' });
+  expect(summary(customer.store).totalStamps).toBe(0);
+  counter.store.dismiss();
+  counter.store.offer(demo.value, 'redeem', 1);
+  expect(counter.store.getSnapshot().offer).toBeNull();
+  expect(counter.serving()).toBeNull();
 });

@@ -82,6 +82,13 @@ describe('renderProvisioningPage', () => {
     }
     expect(html).not.toMatch(/<(script|link|img)\b|@import|url\(/i);
   });
+  test('the demo page says it is safe to share instead of warning', () => {
+    const html = renderProvisioningPage({ ...page, keyId: 0, demo: true });
+    for (const text of ['Counter mode demo', 'Key id: 0 (demo)', 'safe to share', 'reject its stamps', page.staffCode, 'Set up counter device']) {
+      expect(html).toContain(text);
+    }
+    expect(html).not.toContain('PRIVATE KEY');
+  });
   test('escapes every text field while preserving the trusted QR SVG markup', () => {
     const unsafe = `<script>&"'`;
     const escaped = '&lt;script&gt;&amp;&quot;&#39;';

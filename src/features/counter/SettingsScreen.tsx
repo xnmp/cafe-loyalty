@@ -120,7 +120,7 @@ export function SettingsScreen() {
           <View accessibilityLiveRegion="polite">
             <Group>
               <Row icon={Nfc} title="Tap-to-collect" detail={nfc === 'ready' ? 'Ready' : nfc === 'off' ? 'NFC is off' : 'Not supported on this phone — customers scan a QR code'} trailing={nfc === 'off' ? <Button label="Turn on" kind="ghost" onPress={hce.openNfcSettings} style={{ paddingHorizontal: space.sm }} /> : undefined} />
-              <Row icon={ShieldCheck} title="Signing key" detail={`Key #${staffState.credentials.keyId}`} last />
+              <Row icon={ShieldCheck} title="Signing key" detail={staffState.credentials.demo ? "Demo key: these stamps don't count" : `Key #${staffState.credentials.keyId}`} last />
             </Group>
           </View>
           <Button label="Stop using as counter" kind="danger" onPress={() => { setError(undefined); setConfirmLeave(true); }} />

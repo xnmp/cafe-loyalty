@@ -12,9 +12,23 @@ import { keyPairFromSeed, type KeyPair, type KeyRing } from './token';
  */
 export const STAFF_CODE_PREFIX = 'CAFESTAFF1';
 
+/**
+ * The demo staff code opens counter mode for app-store reviewers and staff
+ * practice. Its seed is public (32 zero bytes) and key id 0 is reserved for it,
+ * so no café ever trusts it: customers' apps reject its stamps, and a demo
+ * counter can't take redemptions.
+ */
+export const DEMO_KEY_ID = 0;
+const DEMO_SEED = new Uint8Array(32);
+export const DEMO_PUBLIC_KEY = keyPairFromSeed(DEMO_SEED).publicKey;
+
+export const demoStaffCode = (cafeId: string): string => buildStaffCode(cafeId, DEMO_KEY_ID, DEMO_SEED);
+
 export interface StaffCredentials extends KeyPair {
   readonly keyId: number;
   readonly seed: Uint8Array;
+  /** The public demo key: its stamps count for nothing. */
+  readonly demo: boolean;
 }
 
 export type StaffCodeError = 'not-a-staff-code' | 'malformed' | 'wrong-cafe' | 'untrusted-key';
@@ -37,7 +51,8 @@ export function parseStaffCode(
   if (cafeId !== expected.cafeId) return err('wrong-cafe');
   const keyId = Number(keyIdText);
   const pair = keyPairFromSeed(seed);
+  if (keyId === DEMO_KEY_ID && bytesEqual(pair.publicKey, DEMO_PUBLIC_KEY)) return ok({ keyId, seed, ...pair, demo: true });
   const trusted = expected.keys.get(keyId);
   if (!trusted || !bytesEqual(trusted, pair.publicKey)) return err('untrusted-key');
-  return ok({ keyId, seed, ...pair });
+  return ok({ keyId, seed, ...pair, demo: false });
 }

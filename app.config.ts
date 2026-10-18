@@ -40,7 +40,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // sets one, and EAS builds set their own.
     versionCode: process.env.ANDROID_VERSION_CODE ? Number(process.env.ANDROID_VERSION_CODE) : undefined,
     predictiveBackGestureEnabled: true,
-    blockedPermissions: ['android.permission.RECORD_AUDIO'],
+    // Template and library defaults the app never uses; Play lists every permission on the store page.
+    blockedPermissions: [
+      'android.permission.RECORD_AUDIO',
+      'android.permission.SYSTEM_ALERT_WINDOW',
+      'android.permission.READ_EXTERNAL_STORAGE',
+      'android.permission.WRITE_EXTERNAL_STORAGE',
+      'android.permission.USE_BIOMETRIC',
+      'android.permission.USE_FINGERPRINT',
+    ],
   },
   plugins: [
     'expo-router',

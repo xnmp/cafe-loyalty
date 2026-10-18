@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import QRCode from 'qrcode';
 
 import { keyRingOf, validateConfig, type CafeConfig } from '../src/domain/config';
-import { buildStaffCode, parseStaffCode } from '../src/domain/provisioning';
+import { buildStaffCode, DEMO_KEY_ID, demoStaffCode, parseStaffCode } from '../src/domain/provisioning';
 import { keyPairFromSeed } from '../src/domain/token';
 import { addPublicKey, nextKeyId, removeKey, renderProvisioningPage } from './lib/cafeKeys';
 
@@ -13,6 +13,7 @@ const usage = `Usage: bun run setup-cafe <command> [--root <dir>]
   print [id]   Render provisioning HTML (default: highest id with a secret)
   retire <id>  Remove a trusted public key; keep its secret until safe to delete
   check        Validate config and every staff secret
+  demo         Write the public demo staff code page (docs/review/) for app reviewers
   help         Show this help`;
 
 const isMissing = (error: unknown): boolean => (error as NodeJS.ErrnoException)?.code === 'ENOENT';
@@ -86,10 +87,10 @@ async function readSecret(root: string, config: CafeConfig, filename: string): P
   return { id, code };
 }
 
-async function provisioningHtml(config: CafeConfig, id: number, code: string): Promise<string> {
+async function provisioningHtml(config: CafeConfig, id: number, code: string, demo = false): Promise<string> {
   const qrSvg = await QRCode.toString(code, { type: 'svg', errorCorrectionLevel: 'M', margin: 1 });
   return renderProvisioningPage({ cafeName: config.name, cafeId: config.cafeId, keyId: id,
-    staffCode: code, qrSvg, generatedAt: new Date().toISOString() });
+    staffCode: code, qrSvg, generatedAt: new Date().toISOString(), demo });
 }
 
 async function main(): Promise<void> {
@@ -106,7 +107,7 @@ async function main(): Promise<void> {
     else positional.push(args[i]);
   }
   const [command = 'help', idText, ...extra] = positional;
-  if (!['help', 'new-key', 'print', 'retire', 'check'].includes(command)) throw new Error(`Unknown command: ${command}; run help`);
+  if (!['help', 'new-key', 'print', 'retire', 'check', 'demo'].includes(command)) throw new Error(`Unknown command: ${command}; run help`);
   if (extra.length || (idText !== undefined && !['print', 'retire'].includes(command))) throw new Error('Unexpected arguments; run help');
   if (command === 'help') { console.log(usage); return; }
   if (command === 'retire' && idText === undefined) throw new Error('Usage: retire <id>');
@@ -166,6 +167,13 @@ async function main(): Promise<void> {
       }
       if (problems.length) throw new Error(`Config valid; ${files.length - problems.length}/${files.length} secrets valid: ${problems.join('; ')}`);
       console.log(`Config valid: ${config.keys.length} trusted key(s); ${files.length} secret file(s) verified.`);
+      return;
+    }
+    case 'demo': {
+      const dir = join(root, 'docs', 'review');
+      await mkdir(dir, { recursive: true });
+      await replaceFile(join(dir, 'index.html'), await provisioningHtml(config, DEMO_KEY_ID, demoStaffCode(config.cafeId), true), 0o644);
+      console.log(`Wrote ${join(dir, 'index.html')}. It's safe to publish: customers' apps reject demo stamps.`);
     }
   }
 }

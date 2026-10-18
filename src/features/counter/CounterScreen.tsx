@@ -1,7 +1,7 @@
 import { useKeepAwake } from 'expo-keep-awake';
 import { router, useFocusEffect } from 'expo-router';
-import { Coffee, Gift, Minus, Nfc, Plus, Settings, TriangleAlert } from 'lucide-react-native';
-import { useCallback, useMemo, useState } from 'react';
+import { Coffee, FlaskConical, Gift, Minus, Nfc, Plus, Settings, TriangleAlert } from 'lucide-react-native';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { AppState, ScrollView, StyleSheet, View } from 'react-native';
 
 import * as hce from '../../../modules/hce';
@@ -87,6 +87,13 @@ export function CounterScreen({ credentials }: { credentials: StaffCredentials }
           <Stat icon={Gift} value={today.rewards} label={today.rewards === 1 ? `${rewardName} today` : `${rewardName}s today`} />
         </View>
 
+        {credentials.demo ? (
+          <Banner
+            icon={FlaskConical}
+            title="Demo mode"
+            body="For practice: customers' cards won't accept these stamps, and free drinks are off. To use it for real, choose Stop using as counter in Settings, then set it up with the café's staff code."
+          />
+        ) : null}
         {nfc !== 'ready' ? <NfcBanner status={nfc} /> : null}
 
         <View style={styles.stepperBlock}>
@@ -104,7 +111,7 @@ export function CounterScreen({ credentials }: { credentials: StaffCredentials }
 
         <View style={{ gap: space.sm }}>
           <Button size="lg" icon={Coffee} label={count === 1 ? 'Give 1 stamp' : `Give ${count} stamps`} disabled={loading} onPress={() => start('stamp', count)} testID="give-stamps" />
-          <Button size="lg" kind="secondary" icon={Gift} label={`Redeem ${rewardName}`} disabled={loading} onPress={() => start('redeem', 1)} testID="redeem" />
+          <Button size="lg" kind="secondary" icon={Gift} label={`Redeem ${rewardName}`} disabled={loading || credentials.demo} onPress={() => start('redeem', 1)} testID="redeem" />
         </View>
       </ScrollView>
 
@@ -143,16 +150,28 @@ function StepButton({ icon: Icon, label, disabled, onPress }: { icon: typeof Min
 }
 
 function NfcBanner({ status }: { status: Exclude<NfcStatus, 'ready'> }) {
+  return (
+    <Banner
+      icon={TriangleAlert}
+      title={status === 'off' ? 'NFC is off' : 'No tap-to-collect on this phone'}
+      body={status === 'off' ? 'Turn it on so customers can tap. Until then they can scan a QR code.' : "This phone can't act as a tap point, so customers will scan a QR code instead."}
+    >
+      {status === 'off' ? <Button kind="ghost" icon={Nfc} label="Turn on NFC" onPress={hce.openNfcSettings} style={{ alignSelf: 'flex-start', paddingHorizontal: 0, height: 36 }} /> : null}
+    </Banner>
+  );
+}
+
+function Banner({ icon: Icon, title, body, children }: { icon: typeof Coffee; title: string; body: string; children?: ReactNode }) {
   const { color } = useTheme();
   return (
     <View style={[styles.banner, { backgroundColor: withAlpha(color.accent, 0.1), borderColor: withAlpha(color.accent, 0.3) }]}>
-      <TriangleAlert size={20} color={color.accent} strokeWidth={2} />
+      <Icon size={20} color={color.accent} strokeWidth={2} />
       <View style={{ flex: 1, gap: 2 }}>
-        <AppText variant="bodyStrong">{status === 'off' ? 'NFC is off' : 'No tap-to-collect on this phone'}</AppText>
+        <AppText variant="bodyStrong">{title}</AppText>
         <AppText variant="caption" tone="muted">
-          {status === 'off' ? 'Turn it on so customers can tap. Until then they can scan a QR code.' : "This phone can't act as a tap point, so customers will scan a QR code instead."}
+          {body}
         </AppText>
-        {status === 'off' ? <Button kind="ghost" icon={Nfc} label="Turn on NFC" onPress={hce.openNfcSettings} style={{ alignSelf: 'flex-start', paddingHorizontal: 0, height: 36 }} /> : null}
+        {children}
       </View>
     </View>
   );

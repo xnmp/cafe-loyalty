@@ -1,5 +1,6 @@
-import { fromBase64Url } from './bytes';
+import { bytesEqual, fromBase64Url } from './bytes';
 import type { Rules } from './card';
+import { DEMO_KEY_ID, DEMO_PUBLIC_KEY } from './provisioning';
 import { err, ok, type Result } from './result';
 import type { KeyRing } from './token';
 
@@ -38,6 +39,8 @@ export interface CafeConfig {
   readonly bundleId: string;
   /** EAS project id from `eas init`; empty until the app is linked to Expo's build service. */
   readonly easProjectId?: string;
+  /** Linked from About; the stores require the policy to be reachable in the app. */
+  readonly privacyPolicyUrl?: string;
   readonly rules: Rules & {
     /** Singular noun phrase, e.g. "free drink". */
     readonly rewardName: string;
@@ -71,6 +74,7 @@ export function validateConfig(c: CafeConfig): Result<CafeConfig, readonly strin
   check(typeof c.shortName === 'string' && c.shortName.trim().length > 0, 'shortName is required');
   check(/^[a-z][a-z0-9]{1,31}$/.test(c.scheme ?? ''), 'scheme must be lowercase letters/digits, starting with a letter');
   check(/^[a-zA-Z][a-zA-Z0-9]*(\.[a-zA-Z][a-zA-Z0-9]*)+$/.test(c.bundleId ?? ''), 'bundleId must look like com.example.app');
+  check(c.privacyPolicyUrl === undefined || /^https:\/\/\S+$/.test(c.privacyPolicyUrl), 'privacyPolicyUrl must be an https:// link');
   check(Number.isInteger(c.rules?.stampsPerReward) && c.rules.stampsPerReward >= 2 && c.rules.stampsPerReward <= 20,
     'rules.stampsPerReward must be an integer between 2 and 20');
   check(Number.isInteger(c.rules?.maxStampsPerTap) && c.rules.maxStampsPerTap >= 1 && c.rules.maxStampsPerTap <= 50,
@@ -86,10 +90,13 @@ export function validateConfig(c: CafeConfig): Result<CafeConfig, readonly strin
   check(Array.isArray(c.keys) && c.keys.length > 0, 'keys must list at least one public key (run `bun run setup-cafe`)');
   const ids = new Set<number>();
   for (const k of c.keys ?? []) {
-    check(Number.isInteger(k.id) && k.id >= 0 && k.id <= 255, `key id ${k.id} must be 0–255`);
+    check(Number.isInteger(k.id) && k.id > DEMO_KEY_ID && k.id <= 255, `key id ${k.id} must be 1–255 (0 is the demo code's)`);
     check(!ids.has(k.id), `duplicate key id ${k.id}`);
     ids.add(k.id);
-    check(fromBase64Url(k.publicKey ?? '')?.length === 32, `key ${k.id} publicKey must be 32 bytes base64url`);
+    const publicKey = fromBase64Url(k.publicKey ?? '');
+    check(publicKey?.length === 32, `key ${k.id} publicKey must be 32 bytes base64url`);
+    // Its seed is public: trusting it would let anyone issue stamps.
+    check(!publicKey || !bytesEqual(publicKey, DEMO_PUBLIC_KEY), `key ${k.id} is the public demo key and can't be trusted`);
   }
 
   return problems.length === 0 ? ok(c) : err(problems);

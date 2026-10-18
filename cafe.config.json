@@ -6,6 +6,7 @@
   "scheme": "easternconcourse",
   "bundleId": "md.chong.cafecard",
   "easProjectId": "",
+  "privacyPolicyUrl": "https://xnmp.github.io/cafe-loyalty/privacy/",
   "rules": {
     "stampsPerReward": 9,
     "maxStampsPerTap": 10,

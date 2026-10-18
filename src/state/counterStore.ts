@@ -113,7 +113,7 @@ export type ScanResult = 'checked' | 'not-a-code' | 'ignored';
 
 export interface CounterStore extends Store<CounterState> {
   load(): Promise<void>;
-  /** Starts an offer. Ignored until the store has loaded. */
+  /** Starts an offer. Ignored until the store has loaded, and for redemptions on a demo counter. */
   offer(credentials: StaffCredentials, kind: TokenKind, count: number): void;
   showQr(): void;
   cancel(): void;
@@ -208,6 +208,8 @@ export function createCounterStore(deps: CounterStoreDeps): CounterStore {
 
     offer(credentials, kind, count) {
       if (store.getSnapshot().status !== 'ready') return;
+      // A demo counter would only ask customers' phones for real proofs it can't honour.
+      if (kind === 'redeem' && credentials.demo) return;
       const now = deps.now();
       const created = createOffer({
         kind,
