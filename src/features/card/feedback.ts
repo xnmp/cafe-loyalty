@@ -45,7 +45,7 @@ export function describe(event: IntakeEvent, ctx: FeedbackContext): Feedback {
       return {
         kind: 'redeemed',
         title: `Enjoy your ${rewardName}!`,
-        body: o.redeemed > 1 ? `${o.redeemed} rewards redeemed.` : 'Redeemed just now. Show this screen to the barista.',
+        body: 'The counter phone checks your stamps. Its screen shows the result.',
         short: 'Redeemed — enjoy!',
       };
     }
@@ -71,7 +71,7 @@ export function describe(event: IntakeEvent, ctx: FeedbackContext): Feedback {
     return {
       kind: 'repeat',
       title: 'Already on your card',
-      body: event.original.kind === 'stamp' ? 'That stamp was added a moment ago.' : 'That reward was already redeemed.',
+      body: event.original.kind === 'stamp' ? 'That stamp was added a moment ago.' : `That ${rewardName} was already redeemed.`,
       short: 'Already added',
       autoDismissMs: 2000,
     };
@@ -92,6 +92,10 @@ export function describe(event: IntakeEvent, ctx: FeedbackContext): Feedback {
     }
     case 'storage':
       return problem("Couldn't save that stamp", 'Your phone may be low on storage. Free up some space and try again.', "Couldn't save");
+    case 'not-delivered':
+      return problem('Hold still a little longer', 'Your phone moved away before it finished. Your stamps are still on your card — tap again.', 'Tap again');
+    case 'tap-again':
+      return problem(`Tap again to use your ${rewardName}`, 'Keep this app open and hold your phone to the counter phone once more.', 'Tap again');
     case 'unknown-key':
     case 'invalid-signature':
     case 'malformed':

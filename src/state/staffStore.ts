@@ -3,7 +3,7 @@ import { createPinRecord, isValidPin, parsePinRecord, verifyPin, type PinRecord 
 import { parseStaffCode, type StaffCodeError, type StaffCredentials } from '../domain/provisioning';
 import { err, ok, type Result } from '../domain/result';
 import type { KeyRing } from '../domain/token';
-import type { JsonStore } from '../infra/storage';
+import { valueOf, type JsonStore } from '../infra/storage';
 import { createStore, type Store } from './store';
 
 /**
@@ -70,7 +70,7 @@ export function createStaffStore(deps: StaffStoreDeps): StaffStore {
     ...store,
 
     async load() {
-      const saved = await deps.storage.load(STAFF_KEY, parsePersisted);
+      const saved = valueOf(await deps.storage.load(STAFF_KEY, parsePersisted));
       if (!saved) {
         deps.setTagServiceEnabled(false);
         store.set({ status: 'customer', revoked: false });
@@ -110,7 +110,7 @@ export function createStaffStore(deps: StaffStoreDeps): StaffStore {
       if (!s || !verifyPin(currentPin, s.pin)) return err('wrong-pin');
       if (!isValidPin(next)) return err('invalid-pin');
       const record = createPinRecord(next, deps.randomBytes(16));
-      const code = await deps.storage.load(STAFF_KEY, parsePersisted);
+      const code = valueOf(await deps.storage.load(STAFF_KEY, parsePersisted));
       if (!code) return err('wrong-pin');
       await persist(code.staffCode, record);
       store.set({ ...s, pin: record });

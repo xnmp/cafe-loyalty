@@ -8,7 +8,7 @@ sealed interface TagEvent {
 class ApduResult(val response: ByteArray, val events: List<TagEvent>)
 
 /** Stateful protocol engine; HceRuntime serializes access, independently of Android. */
-class Type4TagEmulator(private val maxNdefFileSize: Int = 1024) {
+class Type4TagEmulator(private val maxNdefFileSize: Int = 4096) {
   init {
     require(maxNdefFileSize in 3..0xffff) { "NDEF file size must fit an unsigned 16-bit value" }
   }
@@ -21,13 +21,13 @@ class Type4TagEmulator(private val maxNdefFileSize: Int = 1024) {
     0x04, 0x06, 0xe1.toByte(), 0x04,
     (maxNdefFileSize ushr 8).toByte(), maxNdefFileSize.toByte(), 0x00, 0x00
   )
-  private var ndefFile = ByteArray(maxNdefFileSize)
+  private var offerFile = ByteArray(maxNdefFileSize)
+  private var stagedFile: StagedFile? = null
   private var applicationSelected = false
   private var selectedFile: Int? = null
   private var returnedBytes = BooleanArray(0)
   private var remainingReadBytes = 0
   private var readEmitted = false
-  private var contentModified = false
 
   fun arm(offerId: String, ndefMessage: ByteArray) {
     require(ndefMessage.isNotEmpty()) { "NDEF message must not be empty" }
@@ -36,28 +36,26 @@ class Type4TagEmulator(private val maxNdefFileSize: Int = 1024) {
     file[0] = (ndefMessage.size ushr 8).toByte()
     file[1] = ndefMessage.size.toByte()
     ndefMessage.copyInto(file, 2)
-    ndefFile = file
+    offerFile = file
     armedOfferId = offerId
     returnedBytes = BooleanArray(2 + ndefMessage.size)
-    remainingReadBytes = returnedBytes.size
-    readEmitted = false
-    contentModified = false
     onDeactivated()
   }
 
   fun disarm() {
     armedOfferId = null
-    ndefFile = ByteArray(maxNdefFileSize)
+    offerFile = ByteArray(maxNdefFileSize)
     returnedBytes = BooleanArray(0)
-    remainingReadBytes = 0
-    readEmitted = false
-    contentModified = false
     onDeactivated()
   }
 
   fun onDeactivated() {
     applicationSelected = false
     selectedFile = null
+    stagedFile = null
+    returnedBytes.fill(false)
+    remainingReadBytes = returnedBytes.size
+    readEmitted = false
   }
 
   fun process(apdu: ByteArray): ApduResult {
@@ -99,7 +97,7 @@ class Type4TagEmulator(private val maxNdefFileSize: Int = 1024) {
   private fun read(command: Command): ApduResult {
     val file = when (selectedFile) {
       CC_FILE -> capabilityContainer
-      NDEF_FILE -> ndefFile
+      NDEF_FILE -> stagedFile?.bytes ?: offerFile
       else -> return status(0x6986)
     }
     if (command.p1 and 0x80 != 0) return status(0x6b00)
@@ -108,7 +106,7 @@ class Type4TagEmulator(private val maxNdefFileSize: Int = 1024) {
     val offset = command.offset
     if (offset >= file.size) return status(0x6b00)
     val end = minOf(offset + length, file.size)
-    val events = if (selectedFile == NDEF_FILE && !contentModified && !readEmitted) {
+    val events = if (selectedFile == NDEF_FILE && stagedFile == null && !readEmitted) {
       for (index in offset until minOf(end, returnedBytes.size)) {
         if (!returnedBytes[index]) {
           returnedBytes[index] = true
@@ -131,14 +129,22 @@ class Type4TagEmulator(private val maxNdefFileSize: Int = 1024) {
     if (command.data.isEmpty()) return status(0x6700)
     val offset = command.offset
     if (offset + command.data.size > maxNdefFileSize) return status(0x6a84)
-    command.data.copyInto(ndefFile, offset)
-    contentModified = true
-    val nlen = (unsigned(ndefFile[0]) shl 8) or unsigned(ndefFile[1])
-    val events = if (offset < 2 && nlen > 0 && nlen <= maxNdefFileSize - 2) {
-      listOf(TagEvent.Written(requireNotNull(armedOfferId), ndefFile.copyOfRange(2, 2 + nlen)))
+    val staged = stagedFile ?: StagedFile(
+      offerFile.copyOf(),
+      // Padding is readable, but does not constitute supplied message bytes.
+      BooleanArray(maxNdefFileSize) { it < 2 + ndefLength(offerFile) }
+    ).also { stagedFile = it }
+    command.data.copyInto(staged.bytes, offset)
+    staged.present.fill(true, offset, offset + command.data.size)
+    val nlen = ndefLength(staged.bytes)
+    val events = if (offset < 2 && nlen > 0 && nlen <= maxNdefFileSize - 2 &&
+      (2 until 2 + nlen).all { staged.present[it] }) {
+      listOf(TagEvent.Written(requireNotNull(armedOfferId), staged.bytes.copyOfRange(2, 2 + nlen)))
     } else emptyList()
     return ApduResult(statusBytes(0x9000), events)
   }
+
+  private class StagedFile(val bytes: ByteArray, val present: BooleanArray)
 
   private class Command(
     val cla: Int,
@@ -172,6 +178,7 @@ class Type4TagEmulator(private val maxNdefFileSize: Int = 1024) {
   private fun status(code: Int) = ApduResult(statusBytes(code), emptyList())
   private fun statusBytes(code: Int) = byteArrayOf((code ushr 8).toByte(), code.toByte())
   private fun unsigned(byte: Byte) = byte.toInt() and 0xff
+  private fun ndefLength(file: ByteArray) = (unsigned(file[0]) shl 8) or unsigned(file[1])
   private fun readLength(byte: Byte) = unsigned(byte).let { if (it == 0) 256 else it }
 
   private companion object {

@@ -13,9 +13,11 @@ interface QrScannerProps {
   readonly onScan: (data: string) => void;
   readonly guide: string;
   readonly onClose: () => void;
+  /** Shown when asking for camera access. */
+  readonly permissionReason?: string;
 }
 
-export function QrScanner({ onScan, guide, onClose }: QrScannerProps) {
+export function QrScanner({ onScan, guide, onClose, permissionReason = 'The camera is only used to scan the code on the counter screen or a staff code.' }: QrScannerProps) {
   const { color } = useTheme();
   const [permission, requestPermission, refreshPermission] = useCameraPermissions();
   const [error, setError] = useState<string>();
@@ -67,7 +69,7 @@ export function QrScanner({ onScan, guide, onClose }: QrScannerProps) {
         <ScrollView contentContainerStyle={styles.permission}>
           <View style={[styles.cameraIcon, { backgroundColor: color.accentSoft }]}><Camera size={space.xxxl} color={color.accent} strokeWidth={2} /></View>
           <AppText variant="title" accessibilityRole="header" align="center">Allow camera</AppText>
-          <AppText tone="muted" align="center">The camera is only used to scan the code on the counter screen or a staff code.</AppText>
+          <AppText tone="muted" align="center">{permissionReason}</AppText>
           {blocked ? <AppText variant="callout" tone="muted" align="center">Allow camera access in your phone’s settings.</AppText> : null}
           {error ? <AppText tone="danger" accessibilityLiveRegion="polite">{error}</AppText> : null}
           <Button label={blocked ? 'Open Settings' : 'Allow camera'} busy={requesting} onPress={() => void allow()} />

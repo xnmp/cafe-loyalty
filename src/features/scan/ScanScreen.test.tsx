@@ -4,7 +4,8 @@ import { router } from 'expo-router';
 
 import { buildTokenLink } from '../../domain/link';
 import { cafe } from '../../config';
-import { submitWithFeedback, type FeltResult } from '../card/submit';
+import { submitWithFeedback } from '../card/submit';
+import type { Feedback } from '../card/feedback';
 import { ScanScreen } from './ScanScreen';
 
 jest.mock('expo-router', () => ({ router: { back: jest.fn() } }));
@@ -37,7 +38,7 @@ describe('customer scan submission', () => {
 
   it('submits only once while saving, then returns to the card', async () => {
     let finish!: () => void;
-    const pending = new Promise<FeltResult>((resolve) => { finish = () => resolve({} as FeltResult); });
+    const pending = new Promise<Feedback>((resolve) => { finish = () => resolve({ kind: 'stamped', title: 'Stamp added', body: '', short: 'Stamp added' }); });
     jest.mocked(submitWithFeedback).mockReturnValue(pending);
     const screen = await render(<ScanScreen />);
     await fireEvent(screen.getByLabelText('Scan result'), 'scan', token);
@@ -51,7 +52,7 @@ describe('customer scan submission', () => {
 
   it('does not pop another screen when saving finishes after closing the scanner', async () => {
     let finish!: () => void;
-    const pending = new Promise<FeltResult>((resolve) => { finish = () => resolve({} as FeltResult); });
+    const pending = new Promise<Feedback>((resolve) => { finish = () => resolve({ kind: 'stamped', title: 'Stamp added', body: '', short: 'Stamp added' }); });
     jest.mocked(submitWithFeedback).mockReturnValue(pending);
     const screen = await render(<ScanScreen />);
     await fireEvent(screen.getByLabelText('Scan result'), 'scan', token);
@@ -62,7 +63,7 @@ describe('customer scan submission', () => {
   });
 
   it('lets the customer retry after saving fails', async () => {
-    jest.mocked(submitWithFeedback).mockRejectedValueOnce(new Error('disk full')).mockResolvedValueOnce({} as FeltResult);
+    jest.mocked(submitWithFeedback).mockRejectedValueOnce(new Error('disk full')).mockResolvedValueOnce({ kind: 'stamped', title: 'Stamp added', body: '', short: 'Stamp added' });
     const screen = await render(<ScanScreen />);
     await fireEvent(screen.getByLabelText('Scan result'), 'scan', token);
     expect(screen.getByText('That stamp could not be saved. Please scan again.')).toBeTruthy();

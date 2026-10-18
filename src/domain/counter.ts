@@ -5,7 +5,8 @@ import { nonceId, signToken, type TokenKind } from './token';
 
 /**
  * Counter-device side: issuing one-time tokens and keeping a short local log
- * so staff can see today's activity. The log is informational only.
+ * so staff can see today's activity. The log is informational only; the
+ * authority on which stamps have been spent is the redemption registry.
  */
 
 export type DeliveryStatus =
@@ -30,12 +31,20 @@ export interface IssuedToken {
   readonly ack: Ack | null;
 }
 
-export interface CounterLog {
-  readonly version: 1;
-  readonly issued: readonly IssuedToken[];
+/** A redemption the counter verified (summary for the activity log). */
+export interface RedemptionRecord {
+  readonly requestId: string;
+  /** Epoch ms. */
+  readonly at: number;
 }
 
-export const emptyCounterLog: CounterLog = { version: 1, issued: [] };
+export interface CounterLog {
+  readonly version: 2;
+  readonly issued: readonly IssuedToken[];
+  readonly redemptions: readonly RedemptionRecord[];
+}
+
+export const emptyCounterLog: CounterLog = { version: 2, issued: [], redemptions: [] };
 
 export const LOG_RETENTION_MS = 35 * 24 * 60 * 60 * 1000;
 
@@ -81,10 +90,22 @@ export function createOffer(p: IssueParams): Offer {
   };
 }
 
+const prune = (log: CounterLog, now: number): CounterLog => ({
+  ...log,
+  issued: log.issued.filter((t) => now - t.issuedAt <= LOG_RETENTION_MS),
+  redemptions: log.redemptions.filter((r) => now - r.at <= LOG_RETENTION_MS),
+});
+
 /** Adds a newly offered token and drops entries past retention. */
 export function logOffer(log: CounterLog, record: IssuedToken, now: number): CounterLog {
-  const kept = log.issued.filter((t) => now - t.issuedAt <= LOG_RETENTION_MS);
-  return { ...log, issued: [...kept, record] };
+  const kept = prune(log, now);
+  return { ...kept, issued: [...kept.issued, record] };
+}
+
+/** Adds a verified redemption (once per request id) and drops entries past retention. */
+export function logRedemption(log: CounterLog, record: RedemptionRecord, now: number): CounterLog {
+  const kept = prune(log, now);
+  return kept.redemptions.some((r) => r.requestId === record.requestId) ? kept : { ...kept, redemptions: [...kept.redemptions, record] };
 }
 
 const updateEntry = (log: CounterLog, id: string, f: (t: IssuedToken) => IssuedToken): CounterLog => ({
@@ -102,7 +123,7 @@ export const markRead = (log: CounterLog, id: string): CounterLog =>
 export const markWithdrawn = (log: CounterLog, id: string): CounterLog =>
   updateEntry(log, id, (t) => (t.status === 'offered' ? { ...t, status: 'withdrawn' } : t));
 
-const isSuccess = (ack: Ack | null): boolean => ack?.status === 'stamped' || ack?.status === 'redeemed';
+const isSuccess = (ack: Ack | null): boolean => ack?.status === 'stamped';
 
 /**
  * Records an ack. A success is never overwritten by a later failure for the
@@ -117,25 +138,27 @@ export interface CounterStats {
 }
 
 /**
- * Activity in [from, to). Counts tokens that left the device (read over NFC,
- * acked, or shown as QR) and were not explicitly rejected by the customer app.
+ * Activity in [from, to). Stamps count tokens that left the device (read over
+ * NFC, acked, or shown as QR) and were not explicitly rejected by the customer
+ * app. Rewards count verified redemptions only.
  */
 export function statsBetween(log: CounterLog, from: number, to: number): CounterStats {
+  const inRange = (at: number) => at >= from && at < to;
   const delivered = log.issued.filter(
     (t) =>
-      t.issuedAt >= from &&
-      t.issuedAt < to &&
+      t.kind === 'stamp' &&
+      inRange(t.issuedAt) &&
       (t.status === 'read' || t.status === 'acked' || t.shownAsQr) &&
       (t.ack === null || isSuccess(t.ack)),
   );
   return {
-    stamps: delivered.reduce((n, t) => (t.kind === 'stamp' ? n + t.count : n), 0),
-    rewards: delivered.reduce((n, t) => (t.kind === 'redeem' ? n + t.count : n), 0),
+    stamps: delivered.reduce((n, t) => n + t.count, 0),
+    rewards: log.redemptions.filter((r) => inRange(r.at)).length,
   };
 }
 
 const DELIVERY_STATUSES: readonly DeliveryStatus[] = ['offered', 'read', 'acked', 'withdrawn'];
-const ACK_STATUSES: readonly Ack['status'][] = ['stamped', 'redeemed', 'already-used', 'expired', 'no-reward', 'invalid'];
+const ACK_STATUSES: readonly Ack['status'][] = ['stamped', 'already-used', 'expired', 'no-reward', 'invalid'];
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const isCount = (v: unknown): v is number => Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 255;
@@ -166,8 +189,15 @@ function isIssuedToken(v: unknown): v is IssuedToken {
   );
 }
 
-/** Validates an unknown value (e.g. parsed from storage) as a CounterLog. Returns null if any entry is malformed. */
+const isRedemptionRecord = (v: unknown): v is RedemptionRecord =>
+  isObject(v) && typeof v.requestId === 'string' && v.requestId.length > 0 && typeof v.at === 'number' && Number.isFinite(v.at);
+
+/**
+ * Validates an unknown value (e.g. parsed from storage) as a CounterLog.
+ * Malformed entries are dropped (the log is informational). Returns null when
+ * the value isn't a log at all.
+ */
 export function parseCounterLog(value: unknown): CounterLog | null {
-  if (!isObject(value) || value.version !== 1 || !Array.isArray(value.issued)) return null;
-  return value.issued.every(isIssuedToken) ? { version: 1, issued: value.issued } : null;
+  if (!isObject(value) || value.version !== 2 || !Array.isArray(value.issued) || !Array.isArray(value.redemptions)) return null;
+  return { version: 2, issued: value.issued.filter(isIssuedToken), redemptions: value.redemptions.filter(isRedemptionRecord) };
 }

@@ -4,6 +4,7 @@ import { useColorScheme } from 'react-native';
 import * as hce from '../../modules/hce';
 import { cafe, trustedKeys } from '../config';
 import { randomBytes } from '../infra/random';
+import { createRedemptionRegistry, openRegistryDb } from '../infra/redemptionRegistry';
 import { appStore, secureStore } from '../infra/storage';
 import { ThemeContext, themeFor } from '../ui/theme';
 import { createCardStore, type CardStore } from './cardStore';
@@ -14,8 +15,10 @@ export interface Stores {
   readonly card: CardStore;
   readonly staff: StaffStore;
   readonly counter: CounterStore;
-  /** Resolves once every store has loaded from storage. */
+  /** Settles once every store has finished loading (successfully or not). Never rejects. */
   readonly ready: Promise<void>;
+  /** Settles once what customer-side intake needs (card, staff mode) has loaded. Never rejects. */
+  readonly customerReady: Promise<void>;
 }
 
 /** Real dependencies. Created once per app process. */
@@ -28,12 +31,18 @@ function createStores(): Stores {
     keys: trustedKeys,
     randomBytes,
     setTagServiceEnabled: (enabled) => {
-      if (hce.isSupported()) hce.setServiceEnabled(enabled);
+      try {
+        if (hce.isSupported()) hce.setServiceEnabled(enabled);
+      } catch {
+        // The counter screen reports NFC as unavailable; never block startup on it.
+      }
     },
   });
   const counter = createCounterStore({
     storage: appStore,
+    registry: createRedemptionRegistry(openRegistryDb),
     cafe,
+    keys: trustedKeys,
     now,
     randomBytes,
     tag: {
@@ -44,8 +53,10 @@ function createStores(): Stores {
   });
   hce.addReadListener((e) => counter.onTagRead(e.offerId));
   hce.addWriteListener((e) => counter.onTagWrite(e.offerId, e.message));
-  const ready = Promise.all([card.load(), staff.load(), counter.load()]).then(() => undefined);
-  return { card, staff, counter, ready };
+  const settled = (...loads: Promise<void>[]) => Promise.allSettled(loads).then(() => undefined);
+  const cardLoad = card.load();
+  const staffLoad = staff.load();
+  return { card, staff, counter, customerReady: settled(cardLoad, staffLoad), ready: settled(cardLoad, staffLoad, counter.load()) };
 }
 
 let singleton: Stores | null = null;

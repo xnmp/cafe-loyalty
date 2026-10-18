@@ -59,13 +59,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         dark: { image: './assets/splash-icon-dark.png', backgroundColor: cafe.theme.dark.background },
       },
     ],
-    // Keeps SecureStore (counter-device secret, PIN) out of Android auto-backup:
-    // its Keystore key can't be restored, so a restored blob would be unreadable.
-    ['expo-secure-store', { configureAndroidBackup: true, faceIDPermission: false }],
+    // Our exclude-only backup rules preserve databases in backup/transfer while
+    // excluding SecureStore preferences, whose Keystore key can't be restored.
+    ['expo-secure-store', { configureAndroidBackup: false, faceIDPermission: false }],
+    './plugins/withBackupRules',
     [
       'expo-camera',
       {
-        cameraPermission: `${cafe.name} uses the camera to scan the stamp code on the counter screen.`,
+        cameraPermission: `${cafe.name} uses the camera to scan loyalty codes at the counter.`,
         microphonePermission: false,
         recordAudioAndroid: false,
       },

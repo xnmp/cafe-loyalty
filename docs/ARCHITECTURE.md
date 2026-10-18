@@ -9,41 +9,69 @@ nothing to break, no personal data collected.
 
 ## Trust model
 
+The counter phone is the authority. The customer's phone keeps its own card,
+but nothing it says about that card is trusted when a reward is handed out.
+
 ```
- counter device (staff mode)                 customer phone
- ───────────────────────────                 ──────────────
- holds Ed25519 secret key      ──token──▶    holds public key(s) (cafe.config.json)
- signs one-time token per sale               verifies signature, freshness, nonce
- serves it over NFC (Android HCE)            appends event to local ledger
- or as a QR code (any platform)  ◀──ack───   (optional) writes ack back over NFC
+ counter phone (staff mode)                   customer phone
+ ──────────────────────────                   ──────────────
+ Ed25519 secret key                           public key(s) from cafe.config.json
+
+ stamp:   signs a one-time token  ──token──▶  verifies signature, freshness, nonce;
+                                              keeps the token as a proof of the stamp
+                                  ◀──ack────  (courtesy) "stamped, 4 of 9"
+
+ redeem:  asks for a reward       ──token──▶  picks unspent proofs worth one reward
+          verifies every proof    ◀─request─  (NFC write, or a code the counter scans)
+          against its registry of
+          spent stamps, records the spend
 ```
 
 - A **token** is 84 bytes: claims (kind, key id, count, issued-at, 96-bit
-  nonce) + Ed25519 signature. Signed message is domain-separated with the
-  café id. See `src/domain/token.ts`.
-- The customer app rejects tokens that are forged, for another café, older
-  than 15 min, from the future (>15 min skew), or whose nonce it has already
-  applied. Nonces are kept in the ledger forever, so clock tricks can't replay.
-- Out of scope (accepted risk, same as a paper card): a rooted phone editing
-  its own storage, a lost phone losing its stamps (OS backups do restore it).
-- The counter device's secret is provisioned by scanning a staff QR code
-  produced by `npm run setup-cafe`; it is stored in SecureStore and never leaves
-  the device.
+  nonce) + Ed25519 signature, domain-separated with the café id. See
+  `src/domain/token.ts`.
+- **Stamps.** The customer app rejects tokens that are forged, for another café,
+  older than 15 min, from the future (>15 min skew), or already applied. It
+  stores each stamp with its signed token: the proof.
+- **Rewards.** A redemption request carries the proofs for one reward
+  (`<scheme>://r/<request id>/<proofs>`). The counter phone checks each
+  signature and its **redemption registry** (SQLite, kept forever) of stamps
+  already spent, then records the spend atomically. Only a verified request
+  shows "verified" to the barista; an ack from the customer app never can. See
+  `src/domain/redemption.ts`.
+- The request id is derived from the stamps it spends, so a retry after a
+  dropped NFC session is recognised instead of spending twice, and an old code
+  shown again is reported as "already used at …".
+- What this stops: forged stamps; copying a stamp token to other phones (only
+  the first redemption that uses it succeeds); fake "redeemed" replies from an
+  NFC tool; re-showing an old success screen or code; a rooted phone inflating
+  its own card (the counter only accepts genuine, unspent proofs).
+- Accepted risks: a copied stamp *displays* on several phones until one of them
+  redeems it; with two counter phones, each keeps its own registry, so the same
+  stamps could be redeemed once on each; a lost customer phone loses its card
+  unless restored from an OS backup; resetting the counter phone without its
+  backup forgets which stamps were spent.
+- The counter phone's secret is provisioned by scanning a staff QR code made
+  by `bun run setup-cafe`; it is stored in SecureStore (excluded from backups)
+  and never leaves the device.
 
 ## Transport
 
-- **NFC (primary)**: the counter device (Android only — iOS can't emulate
-  tags) runs a HostApduService that emulates an NFC Forum Type 4 Tag serving a
-  single NDEF URI record `<scheme>://t/<base64url token>`. The customer app
-  reads it with react-native-nfc-manager on iOS and Android, then best-effort
-  writes back an ack record `<scheme>://a/...` so the barista's screen confirms.
-- **QR (fallback)**: the counter screen can show the same URI as a QR code;
-  the customer app scans it in-app. The OS camera also opens the app via the
-  deep link.
-- **Deep link**: any `<scheme>://t/...` URL that opens the app is applied the
-  same way (covers Android background NFC dispatch and OS camera scans).
+- **NFC (primary)**: the counter phone (Android only — iOS can't emulate tags)
+  runs a HostApduService that emulates an NFC Forum Type 4 Tag serving one NDEF
+  URI record. The customer app reads it with react-native-nfc-manager on iOS and
+  Android and writes its reply (ack, or redemption request) back over the same
+  session. Replies are staged, so an interrupted write never damages the token
+  being served. The emulated file holds up to 4 KB.
+- **QR (fallback)**: for stamps, the counter screen shows the token as a QR code
+  the customer scans in-app (or with the OS camera, via the deep link). For
+  rewards, the customer shows a code and the counter phone scans it.
+- **Deep link**: a `<scheme>://t/...` URL that opens the app (Android background
+  NFC dispatch, OS camera) is applied without navigating
+  (`src/app/+native-intent.tsx`).
 
-All transports converge on one function: `applyToken` in `src/domain/intake.ts`.
+Stamp intake converges on `applyToken` in `src/domain/intake.ts`; redemption
+on `planRedemption` (customer) and `verifyRedemption` (counter).
 
 ## Layout
 
@@ -70,9 +98,12 @@ scripts/                node scripts (key generation, provisioning QR)
   interface, not on the native library.
 - Bytes are `Uint8Array`. Encoding helpers live in `src/domain/bytes.ts` (no
   Node `Buffer`; Hermes doesn't have it).
-- Persistence: customer ledger in AsyncStorage (`card.v1`), counter log in
-  AsyncStorage (`counter.v1`), staff secret + PIN hash in SecureStore.
-  Every persisted shape carries a `version` field.
+- Persistence: customer ledger in AsyncStorage (`card.v2`), counter activity
+  log in AsyncStorage (`counter.v2`, 35 days), redemption registry in SQLite
+  (`redemptions.db`, forever), staff secret + PIN hash in SecureStore. Every
+  persisted shape carries a version. Android backup includes everything except
+  SecureStore (`plugins/withBackupRules.js`). Damaged stored data is kept aside
+  rather than overwritten.
 - Tests: Jest (`jest-expo` preset), colocated as `*.test.ts`. Test behaviour
   through public functions. Kotlin emulator has JVM unit tests under
   `modules/hce/android/src/test`.

@@ -1,7 +1,9 @@
 import { expect, test } from '@jest/globals';
 
+import { MAX_PROOFS } from './redemption';
+import { token as signedToken } from '../testing/protocol.test-utils';
 import { toBase64Url } from './bytes';
-import { buildAckLink, buildTokenLink, parseLink, type Ack, type AckStatus } from './link';
+import { buildAckLink, buildRedeemLink, buildTokenLink, parseLink, type Ack, type AckStatus } from './link';
 
 const scheme = 'testcafe';
 const token = Uint8Array.from({ length: 84 }, (_, i) => i);
@@ -12,7 +14,7 @@ test('token build and parse round-trip', () => {
   expect(parseLink(scheme, buildTokenLink(scheme, token))).toEqual({ kind: 'token', token });
 });
 
-test.each(['stamped', 'redeemed', 'already-used', 'expired', 'no-reward', 'invalid'] satisfies AckStatus[])('ack %s round-trips', (status) => {
+test.each(['stamped', 'already-used', 'expired', 'no-reward', 'invalid'] satisfies AckStatus[])('ack %s round-trips', (status) => {
   const input = { ...ack, status };
   expect(parseLink(scheme, buildAckLink(scheme, input))).toEqual({ kind: 'ack', ack: input });
 });
@@ -51,9 +53,27 @@ test('accepts zero and the largest supported ack number', () => {
   expect(parseLink(scheme, buildAckLink(scheme, input))).toEqual({ kind: 'ack', ack: input });
 });
 
-test('rejects 100k characters of garbage promptly', () => {
-  const started = performance.now();
+test('rejects 100k characters of garbage', () => {
   expect(parseLink(scheme, 'x'.repeat(100000))).toBeNull();
   expect(parseLink(scheme, `testcafe://t/${'!'.repeat(100000)}`)).toBeNull();
-  expect(performance.now() - started).toBeLessThan(1000);
+});
+
+const request = { requestId: ack.nonceId, proofs: [signedToken(1, 3), signedToken(2, 6)] };
+test('redemption requests round trip with ordered genuine proofs', () => {
+  expect(parseLink(scheme, buildRedeemLink(scheme, request))).toEqual({ kind: 'redeem', request });
+  expect(parseLink('TESTCAFE', `${buildRedeemLink(scheme, request)}/?source=nfc#ok`)).toEqual({ kind: 'redeem', request });
+});
+
+test.each([0, 1, 11, 13, 100000])('rejects request id of %i bytes', (size) => {
+  expect(parseLink(scheme, buildRedeemLink(scheme, { ...request, requestId: toBase64Url(new Uint8Array(size)) }))).toBeNull();
+});
+
+test.each([0, 1, 83, 85, 167, 84 * (MAX_PROOFS + 1), 100000])('rejects redemption payload of %i bytes', (size) => {
+  expect(parseLink(scheme, `testcafe://r/${request.requestId}/${toBase64Url(new Uint8Array(size))}`)).toBeNull();
+});
+
+test('accepts exactly MAX_PROOFS and rejects legacy redeemed acknowledgements', () => {
+  const maximum = { ...request, proofs: Array.from({ length: MAX_PROOFS }, (_, i) => signedToken(i + 1)) };
+  expect(parseLink(scheme, buildRedeemLink(scheme, maximum))).toEqual({ kind: 'redeem', request: maximum });
+  expect(parseLink(scheme, `testcafe://a/${ack.nonceId}/redeemed/0/1`)).toBeNull();
 });

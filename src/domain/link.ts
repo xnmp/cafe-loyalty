@@ -1,19 +1,24 @@
-import { fromBase64Url, toBase64Url } from './bytes';
+import { concatBytes, fromBase64Url, toBase64Url } from './bytes';
+import { MAX_PROOFS, REQUEST_ID_LENGTH, type RedemptionRequest } from './redemption';
 import { NONCE_LENGTH, TOKEN_LENGTH } from './token';
 
 /**
  * URI formats carried over NFC (NDEF URI record), QR codes and deep links:
  *
- *   token: <scheme>://t/<base64url 84-byte token>
- *   ack:   <scheme>://a/<base64url nonce>/<status>/<progress>/<rewardsAvailable>
+ *   token:  <scheme>://t/<base64url 84-byte token>
+ *   ack:    <scheme>://a/<base64url nonce>/<status>/<progress>/<rewardsAvailable>
+ *   redeem: <scheme>://r/<base64url request id>/<base64url of n × 84-byte stamp tokens>
  *
- * The ack is written back by the customer app so the counter screen can
- * confirm the outcome. It is unauthenticated UX feedback, never trusted.
+ * Tokens go from the counter phone to the customer. The ack is written back
+ * after a stamp so the counter screen can confirm it; it is unauthenticated UX
+ * feedback and never trusted for anything that costs the café. A redemption
+ * request goes from the customer to the counter (NFC write, or a code the
+ * counter scans) and is verified there; see redemption.ts.
  */
 
-export type AckStatus = 'stamped' | 'redeemed' | 'already-used' | 'expired' | 'no-reward' | 'invalid';
+export type AckStatus = 'stamped' | 'already-used' | 'expired' | 'no-reward' | 'invalid';
 
-const ACK_STATUSES: readonly AckStatus[] = ['stamped', 'redeemed', 'already-used', 'expired', 'no-reward', 'invalid'];
+const ACK_STATUSES: readonly AckStatus[] = ['stamped', 'already-used', 'expired', 'no-reward', 'invalid'];
 
 export interface Ack {
   readonly nonceId: string;
@@ -25,12 +30,16 @@ export interface Ack {
 
 export type ParsedLink =
   | { readonly kind: 'token'; readonly token: Uint8Array }
-  | { readonly kind: 'ack'; readonly ack: Ack };
+  | { readonly kind: 'ack'; readonly ack: Ack }
+  | { readonly kind: 'redeem'; readonly request: RedemptionRequest };
 
 export const buildTokenLink = (scheme: string, token: Uint8Array): string => `${scheme}://t/${toBase64Url(token)}`;
 
 export const buildAckLink = (scheme: string, ack: Ack): string =>
   `${scheme}://a/${ack.nonceId}/${ack.status}/${ack.progress}/${ack.rewardsAvailable}`;
+
+export const buildRedeemLink = (scheme: string, request: RedemptionRequest): string =>
+  `${scheme}://r/${request.requestId}/${toBase64Url(concatBytes(...request.proofs))}`;
 
 const SMALL_INT = /^\d{1,6}$/;
 
@@ -65,6 +74,15 @@ export function parseLink(scheme: string, raw: string): ParsedLink | null {
       kind: 'ack',
       ack: { nonceId, status: status as AckStatus, progress: Number(progress), rewardsAvailable: Number(available) },
     };
+  }
+
+  if (route === 'r' && rest.length === 2) {
+    const [requestId, packed] = rest;
+    if (fromBase64Url(requestId)?.length !== REQUEST_ID_LENGTH) return null;
+    const bytes = fromBase64Url(packed);
+    if (!bytes || bytes.length === 0 || bytes.length % TOKEN_LENGTH !== 0 || bytes.length / TOKEN_LENGTH > MAX_PROOFS) return null;
+    const proofs = Array.from({ length: bytes.length / TOKEN_LENGTH }, (_, i) => bytes.slice(i * TOKEN_LENGTH, (i + 1) * TOKEN_LENGTH));
+    return { kind: 'redeem', request: { requestId, proofs } };
   }
 
   return null;

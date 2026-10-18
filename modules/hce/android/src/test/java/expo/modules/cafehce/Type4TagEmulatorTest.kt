@@ -11,7 +11,7 @@ import org.junit.Test
 class Type4TagEmulatorTest {
   private val message = hex("D101075504636166652F31")
 
-  private fun armed(size: Int = 1024) = Type4TagEmulator(size).apply { arm("offer-1", message) }
+  private fun armed(size: Int = 4096) = Type4TagEmulator(size).apply { arm("offer-1", message) }
 
   private fun hex(value: String): ByteArray = value.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
 
@@ -55,7 +55,7 @@ class Type4TagEmulatorTest {
     assertStatus("9000", command(tag, "00A4040007D276000085010100"))
     assertStatus("9000", command(tag, "00A4000C02E103"))
     val cc = command(tag, "00B000000F")
-    assertArrayEquals(hex("000F2000FF00FF0406E104040000009000"), cc.response)
+    assertArrayEquals(hex("000F2000FF00FF0406E104100000009000"), cc.response)
     assertTrue(cc.events.isEmpty())
     assertStatus("9000", command(tag, "00A4000C02E104"))
     val nlen = command(tag, "00B0000002")
@@ -178,7 +178,9 @@ class Type4TagEmulatorTest {
     assertTrue(result.events.isEmpty())
     tag.onDeactivated()
     selectNdef(tag)
-    assertTrue(read(tag, 0, 255).events.isEmpty())
+    val original = read(tag, 0, message.size + 2)
+    assertArrayEquals(byteArrayOf(0, message.size.toByte()) + message + hex("9000"), original.response)
+    assertRead(original)
   }
 
   @Test fun singleShotWriteAndCaseFourUpdateCommitExactMessage() {
@@ -202,6 +204,7 @@ class Type4TagEmulatorTest {
     assertStatus("9000", write(tag, 0, hex("FFFF")))
     assertStatus("9000", write(tag, 0, hex("0000")))
     assertStatus("9000", write(tag, 2, ByteArray(254) { 0x55.toByte() }))
+    assertStatus("9000", write(tag, 256, ByteArray(5)))
     assertWritten(write(tag, 0, hex("0100")), ByteArray(256) { if (it < 254) 0x55.toByte() else 0 })
     assertStatus("9000", write(tag, 0, hex("00")))
     assertWritten(write(tag, 1, hex("03")), hex("555555"))
@@ -233,7 +236,7 @@ class Type4TagEmulatorTest {
     assertTrue(read(tag, 0, message.size + 2).events.isEmpty())
   }
 
-  @Test fun deactivationClearsSelectionButKeepsContentAndReadDeduplication() {
+  @Test fun deactivationClearsSelectionAndResetsReadDeduplication() {
     val tag = armed()
     selectNdef(tag)
     assertRead(read(tag, 0, message.size + 2))
@@ -245,15 +248,17 @@ class Type4TagEmulatorTest {
     val result = read(tag, 2, message.size)
     assertArrayEquals(message + hex("9000"), result.response)
     assertTrue(result.events.isEmpty())
+    assertRead(read(tag, 0, 2))
   }
 
-  @Test fun partialReadCoverageSurvivesFieldSessions() {
+  @Test fun partialReadCoverageDoesNotCarryAcrossFieldSessions() {
     val tag = armed()
     selectNdef(tag)
     assertTrue(read(tag, 0, 2).events.isEmpty())
     tag.onDeactivated()
     selectNdef(tag)
-    assertRead(read(tag, 2, message.size))
+    assertTrue(read(tag, 2, message.size).events.isEmpty())
+    assertRead(read(tag, 0, 2))
   }
 
   @Test fun rearmResetsReadWriteTrackingContentAndSelection() {
@@ -318,5 +323,122 @@ class Type4TagEmulatorTest {
       val result = tag.process(bytes)
       assertTrue("iteration $iteration", result.response.size >= 2)
     }
+  }
+
+  @Test fun interruptedWriteIsDiscardedOnDeactivationOrFreshApplicationSelect() {
+    for (deactivate in listOf(false, true)) {
+      val tag = armed()
+      selectNdef(tag)
+      assertStatus("9000", write(tag, 0, hex("0000")))
+      assertStatus("9000", write(tag, 2, hex("112233")))
+      if (deactivate) tag.onDeactivated()
+      selectNdef(tag)
+      val result = read(tag, 0, message.size + 2)
+      assertArrayEquals(byteArrayOf(0, message.size.toByte()) + message + hex("9000"), result.response)
+      assertRead(result)
+    }
+  }
+
+  @Test fun largeReplyWrittenInShortApduChunksCommitsExactMessage() {
+    val tag = Type4TagEmulator().apply { arm("offer-1", message) }
+    val reply = ByteArray(2400) { (it * 31).toByte() }
+    selectNdef(tag)
+    assertStatus("9000", write(tag, 0, hex("0000")))
+    for (offset in reply.indices step 0xff) {
+      assertStatus("9000", write(tag, offset + 2, reply.copyOfRange(offset, minOf(offset + 0xff, reply.size))))
+    }
+    assertWritten(write(tag, 0, byteArrayOf((reply.size ushr 8).toByte(), reply.size.toByte())), reply)
+  }
+
+  @Test fun stagingStartsWithOfferAndFileReselectionKeepsReadAfterWriteView() {
+    val tag = armed()
+    selectNdef(tag)
+    assertStatus("9000", write(tag, 3, hex("1122")))
+    assertStatus("9000", command(tag, "00A4000C02E103"))
+    assertStatus("9000", command(tag, "00A4000C02E104"))
+    val expected = byteArrayOf(0, message.size.toByte()) + message
+    expected[3] = 0x11
+    expected[4] = 0x22
+    val result = read(tag, 0, expected.size)
+    assertArrayEquals(expected + hex("9000"), result.response)
+    assertTrue(result.events.isEmpty())
+  }
+
+  @Test fun overflowDoesNotCorruptStagingAndLastFileByteCanBeWritten() {
+    val tag = Type4TagEmulator().apply { arm("offer-1", message) }
+    selectNdef(tag)
+    assertStatus("9000", write(tag, 0, hex("0000")))
+    assertStatus("9000", write(tag, 4095, hex("55")))
+    assertStatus("6A84", write(tag, 4095, hex("1122")))
+    assertStatus("6A84", write(tag, 4096, hex("33")))
+    val lastByte = read(tag, 4095, 1)
+    assertArrayEquals(hex("559000"), lastByte.response)
+    assertTrue(lastByte.events.isEmpty())
+    assertStatus("9000", write(tag, 2, hex("112233")))
+    assertWritten(write(tag, 0, hex("0003")), hex("112233"))
+  }
+
+  @Test fun replacingOrClearingOfferDiscardsUncommittedStaging() {
+    for (clearFirst in listOf(false, true)) {
+      val tag = armed()
+      selectNdef(tag)
+      assertStatus("9000", write(tag, 0, hex("0000")))
+      assertStatus("9000", write(tag, 2, hex("112233")))
+      if (clearFirst) {
+        tag.disarm()
+        assertStatus("6986", read(tag, 0, 2))
+        assertStatus("6A82", command(tag, "00A4040007D2760000850101"))
+      }
+      val replacement = hex("D10102550062")
+      tag.arm("offer-2", replacement)
+      assertStatus("6986", write(tag, 0, hex("0003")))
+      selectNdef(tag)
+      val result = read(tag, 0, replacement.size + 2)
+      assertArrayEquals(byteArrayOf(0, replacement.size.toByte()) + replacement + hex("9000"), result.response)
+      assertRead(result, "offer-2")
+    }
+  }
+
+  @Test fun defaultCapabilityContainerAdvertises4096WithUnchangedShortApduLimits() {
+    val tag = Type4TagEmulator().apply { arm("offer-1", message) }
+    selectNdef(tag)
+    assertStatus("9000", command(tag, "00A4000C02E103"))
+    val result = read(tag, 0, 15)
+    assertArrayEquals(hex("000F2000FF00FF0406E104100000009000"), result.response)
+    assertTrue(result.events.isEmpty())
+  }
+
+  @Test fun nlenCommitRequiresEveryMessageByteAndNotJustTheHighestOffset() {
+    val tag = armed()
+    selectNdef(tag)
+    assertStatus("9000", write(tag, 0, hex("0000")))
+    assertStatus("9000", write(tag, 15, hex("112233")))
+    // The original offer supplies offsets 2..12, leaving a gap at 13..14.
+    assertStatus("9000", write(tag, 0, hex("0010")))
+    assertStatus("9000", write(tag, 13, hex("4455")))
+    assertWritten(write(tag, 0, hex("0010")), message + hex("4455112233"))
+  }
+
+  @Test fun maximumMessageFitsAndOneByteMoreIsRejected() {
+    val tag = Type4TagEmulator()
+    val maximum = ByteArray(4094) { (it * 7).toByte() }
+    tag.arm("offer-1", maximum)
+    selectNdef(tag)
+    assertArrayEquals(hex("0FFE9000"), read(tag, 0, 2).response)
+    try {
+      tag.arm("too-large", ByteArray(4095))
+      throw AssertionError("An offer plus NLEN must fit the 4096-byte file")
+    } catch (_: IllegalArgumentException) { }
+    for (offset in maximum.indices step 0xff) {
+      val end = minOf(offset + 0xff, maximum.size)
+      val result = read(tag, offset + 2, end - offset)
+      assertArrayEquals(maximum.copyOfRange(offset, end) + hex("9000"), result.response)
+      if (end == maximum.size) assertRead(result) else assertTrue(result.events.isEmpty())
+    }
+    assertStatus("9000", write(tag, 0, hex("0000")))
+    for (offset in maximum.indices step 0xff) {
+      assertStatus("9000", write(tag, offset + 2, maximum.copyOfRange(offset, minOf(offset + 0xff, maximum.size))))
+    }
+    assertWritten(write(tag, 0, hex("0FFE")), maximum)
   }
 }

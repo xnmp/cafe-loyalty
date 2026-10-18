@@ -1,8 +1,7 @@
 import { router } from 'expo-router';
 import { History, Info, Nfc, ScanLine, Smartphone } from 'lucide-react-native';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { cafe } from '../../config';
 import { summarize } from '../../domain/card';
@@ -10,12 +9,13 @@ import { rewardsUnlocked } from '../../domain/intake';
 import { useStores } from '../../state/AppProviders';
 import { useStore } from '../../state/store';
 import { AppText, Button, IconButton, Screen } from '../../ui/primitives';
-import { NfcPulse } from '../../ui/motion';
+import { Appear, NfcPulse } from '../../ui/motion';
 import { RewardTicket } from '../../ui/RewardTicket';
 import { StampCard } from '../../ui/StampCard';
 import { space, useTheme, withAlpha } from '../../ui/theme';
 import { describe, progressLine } from './feedback';
 import { FeedbackSheet } from './FeedbackSheet';
+import { RedeemSheet } from './RedeemSheet';
 import { useTapToCollect, type TapController } from './useTapToCollect';
 
 function greeting(date: Date): string {
@@ -33,7 +33,15 @@ export function CardScreen() {
     () => (lastEvent ? describe(lastEvent, { cafeName: cafe.name, rewardName, stampsPerReward, summary }) : null),
     [lastEvent, rewardName, stampsPerReward, summary],
   );
-  const tap = useTapToCollect({ paused: feedback !== null });
+  // Each opening remounts the sheet so it starts at its first step.
+  const [redeemOpen, setRedeemOpen] = useState(false);
+  const [redeemKey, setRedeemKey] = useState(0);
+  const openRedeem = () => {
+    setRedeemKey((k) => k + 1);
+    setRedeemOpen(true);
+  };
+  // Don't read the counter phone while the customer is busy with a sheet.
+  const tap = useTapToCollect({ paused: feedback !== null || redeemOpen });
 
   const dismiss = useCallback(() => {
     if (lastEvent) cardStore.dismiss(lastEvent.id);
@@ -49,6 +57,7 @@ export function CardScreen() {
   const rewardsShown = celebrating ? summary.rewardsAvailable - rewardsUnlocked(stamped) : summary.rewardsAvailable;
 
   if (status === 'loading') return <Screen>{null}</Screen>;
+  if (status === 'unavailable') return <Unavailable onRetry={() => void cardStore.load()} />;
 
   return (
     <Screen edges={['top']}>
@@ -79,7 +88,7 @@ export function CardScreen() {
 
         {rewardsShown > 0 ? (
           <View style={{ marginTop: space.lg }}>
-            <RewardTicket count={rewardsShown} rewardName={rewardName} />
+            <RewardTicket count={rewardsShown} rewardName={rewardName} onPress={openRedeem} />
           </View>
         ) : null}
 
@@ -88,6 +97,23 @@ export function CardScreen() {
 
       <TapPanel tap={tap} hasReward={summary.rewardsAvailable > 0} />
       <FeedbackSheet feedback={feedback} onDismiss={dismiss} />
+      <RedeemSheet key={redeemKey} visible={redeemOpen} count={summary.rewardsAvailable} onClose={() => setRedeemOpen(false)} />
+    </Screen>
+  );
+}
+
+function Unavailable({ onRetry }: { onRetry: () => void }) {
+  return (
+    <Screen>
+      <View style={styles.unavailable}>
+        <AppText variant="title" align="center" accessibilityRole="header">
+          Couldn&rsquo;t open your card
+        </AppText>
+        <AppText tone="muted" align="center">
+          Your stamps are safe, but this phone couldn&rsquo;t read them just now. Restarting the app or freeing up some space usually helps.
+        </AppText>
+        <Button label="Try again" onPress={onRetry} style={{ alignSelf: 'stretch', marginTop: space.md }} />
+      </View>
     </Screen>
   );
 }
@@ -100,7 +126,7 @@ function HowItWorks() {
     { n: '3', text: `Every ${cafe.rules.stampsPerReward + 1}th drink is on us.` },
   ];
   return (
-    <Animated.View entering={FadeIn.delay(200)} style={{ marginTop: space.xl, gap: space.sm }}>
+    <Appear delay={200} style={{ marginTop: space.xl, gap: space.sm }}>
       <AppText variant="overline" tone="muted">
         How it works
       </AppText>
@@ -116,7 +142,7 @@ function HowItWorks() {
           </AppText>
         </View>
       ))}
-    </Animated.View>
+    </Appear>
   );
 }
 
@@ -173,6 +199,7 @@ function TapPanel({ tap, hasReward }: { tap: TapController; hasReward: boolean }
 
 const styles = StyleSheet.create({
   scroll: { padding: space.lg, paddingBottom: space.xxxl },
+  unavailable: { flex: 1, justifyContent: 'center', padding: space.xl, gap: space.sm },
   header: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: space.xl, marginTop: space.xs },
   headerActions: { flexDirection: 'row', gap: space.xs, marginTop: space.xxs },
   step: { flexDirection: 'row', alignItems: 'center', gap: space.sm },

@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 
 import { emptyCard } from './card';
-import { createOffer, emptyCounterLog, logOffer, LOG_RETENTION_MS, markRead, markShownAsQr, markWithdrawn, parseCounterLog, recordAck, statsBetween, type CounterLog, type IssuedToken } from './counter';
+import { createOffer, emptyCounterLog, logOffer, logRedemption, LOG_RETENTION_MS, markRead, markShownAsQr, markWithdrawn, parseCounterLog, recordAck, statsBetween, type CounterLog, type IssuedToken } from './counter';
 import { applyToken } from './intake';
 import { parseLink, type Ack } from './link';
 import { decodeMessage, messageUris } from './ndef';
@@ -11,7 +11,7 @@ const pair = keyPairFromSeed(new Uint8Array(32).fill(4));
 const keys = new Map([[2, pair.publicKey]]);
 const params = { kind: 'stamp' as const, count: 3, now: 1700000000123, nonce: new Uint8Array(12).fill(4), keyId: 2, secretKey: pair.secretKey, cafeId: 'test-cafe', scheme: 'testcafe' };
 const offer = createOffer(params);
-const base: CounterLog = { version: 1, issued: [offer.record] };
+const base: CounterLog = { version: 2, redemptions: [], issued: [offer.record] };
 const ack: Ack = { nonceId: offer.record.nonceId, status: 'stamped', progress: 3, rewardsAvailable: 0 };
 
 test('offer NDEF URI parses to a verifiable token that applies to a customer card', () => {
@@ -29,7 +29,7 @@ test('logOffer prunes past retention, keeps the exact boundary, and preserves in
   const now = params.now;
   const old: IssuedToken = { ...offer.record, nonceId: 'old', issuedAt: now - LOG_RETENTION_MS - 1 };
   const boundary: IssuedToken = { ...old, nonceId: 'boundary', issuedAt: now - LOG_RETENTION_MS };
-  const log: CounterLog = { version: 1, issued: [old, boundary] };
+  const log: CounterLog = { version: 2, redemptions: [], issued: [old, boundary] };
   expect(logOffer(log, offer.record, now).issued).toEqual([boundary, offer.record]);
   expect(log.issued).toEqual([old, boundary]);
   expect(logOffer(emptyCounterLog, offer.record, now).issued).toEqual([offer.record]);
@@ -50,7 +50,7 @@ test('read, withdrawal and QR transitions preserve delivery evidence', () => {
   expect(base.issued[0]).toMatchObject({ status: 'offered', shownAsQr: false, ack: null });
 });
 
-test.each(['stamped', 'redeemed'] as const)('a successful %s ack survives later rejection', (status) => {
+test.each(['stamped'] as const)('a successful %s ack survives later rejection', (status) => {
   const success = { ...ack, status };
   const log = recordAck(base, success);
   expect(recordAck(log, { ...ack, status: 'already-used' })).toEqual(log);
@@ -66,19 +66,19 @@ test('a later successful ack replaces failure and unknown nonces are ignored', (
 
 test('stats count only delivered, non-rejected offers in [from, to)', () => {
   const entry = (nonceId: string, override: Partial<IssuedToken>): IssuedToken => ({ ...offer.record, nonceId, issuedAt: 100, count: 2, ...override });
-  const log: CounterLog = { version: 1, issued: [
+  const log: CounterLog = { version: 2, issued: [
     entry('from', { status: 'read', issuedAt: 100 }),
     entry('inside', { status: 'acked', ack, count: 3, issuedAt: 199 }),
     entry('qr', { shownAsQr: true, count: 4 }),
     entry('qr-withdrawn', { status: 'withdrawn', shownAsQr: true, count: 5 }),
     entry('reward', { kind: 'redeem', status: 'read', count: 2 }),
-    entry('reward-acked', { kind: 'redeem', status: 'acked', count: 3, ack: { ...ack, status: 'redeemed' } }),
+    entry('reward-acked', { kind: 'redeem', status: 'acked', count: 3, ack }),
     entry('before', { status: 'read', issuedAt: 99, count: 100 }),
     entry('to', { status: 'read', issuedAt: 200, count: 100 }),
     entry('offered', { count: 100 }), entry('withdrawn', { status: 'withdrawn', count: 100 }),
     ...(['already-used', 'expired', 'no-reward', 'invalid'] as const).map((status) => entry(status, { status: 'acked', shownAsQr: true, count: 100, ack: { ...ack, status } })),
-  ] };
-  expect(statsBetween(log, 100, 200)).toEqual({ stamps: 14, rewards: 5 });
+  ], redemptions: [{ requestId: 'from', at: 100 }, { requestId: 'inside', at: 199 }, { requestId: 'before', at: 99 }, { requestId: 'to', at: 200 }] };
+  expect(statsBetween(log, 100, 200)).toEqual({ stamps: 14, rewards: 2 });
   expect(statsBetween(log, 200, 200)).toEqual({ stamps: 0, rewards: 0 });
   expect(statsBetween(emptyCounterLog, 0, Infinity)).toEqual({ stamps: 0, rewards: 0 });
 });
@@ -88,7 +88,7 @@ test('parseCounterLog accepts a complete issued log', () => {
   expect(parseCounterLog(JSON.parse(JSON.stringify(recordAck(base, ack))))).toEqual(recordAck(base, ack));
 });
 
-test.each([null, [], 'log', {}, { version: 2, issued: [] }, { version: 1, issued: {} }, { version: 1, issued: [null] }, { version: 1, issued: [{}] }])('parseCounterLog rejects junk %#', (value) => {
+test.each([null, [], 'log', {}, { version: 1, issued: [], redemptions: [] }, { version: 2, issued: [] }, { version: 2, issued: {}, redemptions: [] }, { version: 2, issued: [], redemptions: null }])('parseCounterLog rejects non-logs %#', (value) => {
   expect(parseCounterLog(value)).toBeNull();
 });
 
@@ -98,6 +98,27 @@ test.each([
   ['zero count', { count: 0 }], ['negative count', { count: -1 }], ['fractional count', { count: 1.5 }],
   ['NaN count', { count: NaN }], ['NaN issuedAt', { issuedAt: NaN }],
   ['unknown status', { status: 'unknown' }], ['non-boolean shownAsQr', { shownAsQr: 'yes' }], ['malformed ack', { ack: { status: 'unknown' } }],
-])('parseCounterLog rejects %s', (_label, override) => {
-  expect(parseCounterLog({ version: 1, issued: [{ ...offer.record, ...override }] })).toBeNull();
+])('parseCounterLog drops %s', (_label, override) => {
+  expect(parseCounterLog({ version: 2, redemptions: [], issued: [offer.record, { ...offer.record, ...override }] })).toEqual(base);
+});
+
+test('logRedemption deduplicates request ids and prunes both collections at retention boundary', () => {
+  const at = params.now;
+  const boundary = { requestId: 'boundary', at: at - LOG_RETENTION_MS };
+  const old = { requestId: 'old', at: boundary.at - 1 };
+  const log: CounterLog = { version: 2, issued: [{ ...offer.record, issuedAt: old.at }, { ...offer.record, issuedAt: boundary.at }], redemptions: [old, boundary] };
+  const record = { requestId: 'new', at };
+  const next = logRedemption(log, record, at);
+  expect(next).toEqual({ version: 2, issued: [log.issued[1]], redemptions: [boundary, record] });
+  expect(logRedemption(next, { ...record, at: at + 1 }, at)).toEqual(next);
+  expect(log.redemptions).toEqual([old, boundary]);
+  expect(logOffer(log, offer.record, at).redemptions).toEqual([boundary]);
+});
+
+test.each([null, [], {}, { requestId: '', at: 1 }, { requestId: 1, at: 1 }, { requestId: 'r', at: NaN }, { requestId: 'r', at: Infinity }, { requestId: 'r', at: '1' }])('drops malformed redemption %# and preserves valid entries', (bad) => {
+  expect(parseCounterLog({ ...base, issued: [null, ...base.issued], redemptions: [bad, { requestId: 'ok', at: 0 }] })).toEqual({ ...base, redemptions: [{ requestId: 'ok', at: 0 }] });
+});
+
+test('large malformed collections are dropped without losing valid log entries', () => {
+  expect(parseCounterLog({ version: 2, issued: [...Array(10000).fill(null), offer.record], redemptions: Array(10000).fill({ requestId: '', at: 0 }) })).toEqual(base);
 });

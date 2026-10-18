@@ -1,21 +1,22 @@
-import { Gift } from 'lucide-react-native';
+import { ChevronRight, Gift } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 
-import { AppText } from './primitives';
+import { Appear } from './motion';
+import { AppText, Squishy } from './primitives';
 import { elevation, radius, space, useTheme, withAlpha } from './theme';
 
-/** A torn-off ticket: the reward waiting to be used. */
-export function RewardTicket({ count, rewardName }: { count: number; rewardName: string }) {
+/** A torn-off ticket: the reward waiting to be used. Pressing it offers the redemption code. */
+export function RewardTicket({ count, rewardName, onPress }: { count: number; rewardName: string; onPress: () => void }) {
   const theme = useTheme();
   const { color } = theme;
   const notch = 18;
   return (
-    <Animated.View
-      entering={FadeInDown.springify().damping(16)}
+    <Appear from="rise">
+    <Squishy
+      onPress={onPress}
       style={[styles.ticket, { backgroundColor: color.accent }, elevation(theme, 1)]}
-      accessible
-      accessibilityLabel={`${count} ${rewardName}${count > 1 ? 's' : ''} ready. Ask at the counter, then tap your phone to redeem.`}
+      accessibilityRole="button"
+      accessibilityLabel={`${count} ${rewardName}${count > 1 ? 's' : ''} ready. Ask at the counter and tap your phone, or open to show your code.`}
     >
       <View style={[styles.notch, { left: -notch / 2, width: notch, height: notch, borderRadius: notch / 2, backgroundColor: color.background }]} />
       <View style={[styles.notch, { right: -notch / 2, width: notch, height: notch, borderRadius: notch / 2, backgroundColor: color.background }]} />
@@ -27,13 +28,15 @@ export function RewardTicket({ count, rewardName }: { count: number; rewardName:
           {count > 1 ? `${count} ${rewardName}s ready` : `Your ${rewardName} is ready`}
         </AppText>
         <AppText variant="caption" tone="onAccent" style={{ opacity: 0.85, marginTop: 2 }}>
-          Ask at the counter, then tap your phone to redeem.
+          Ask at the counter and tap your phone — or tap here for your code.
         </AppText>
       </View>
       <View style={[styles.stub, { borderColor: withAlpha(color.onAccent, 0.35) }]}>
-        <AppText style={{ fontFamily: 'Fraunces-Bold', fontSize: 22, color: color.onAccent }}>×{count}</AppText>
+        {count > 1 ? <AppText style={{ fontFamily: 'Fraunces-Bold', fontSize: 22, color: color.onAccent }}>×{count}</AppText> : null}
+        <ChevronRight size={20} color={color.onAccent} strokeWidth={2.2} />
       </View>
-    </Animated.View>
+    </Squishy>
+    </Appear>
   );
 }
 
@@ -50,5 +53,5 @@ const styles = StyleSheet.create({
   },
   notch: { position: 'absolute', top: '50%', marginTop: -9 },
   iconWrap: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  stub: { borderLeftWidth: 1.5, borderStyle: 'dashed', paddingLeft: space.sm, marginLeft: space.xxs, minWidth: 48, alignItems: 'center' },
+  stub: { borderLeftWidth: 1.5, borderStyle: 'dashed', paddingLeft: space.sm, marginLeft: space.xxs, minWidth: 48, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 2, alignSelf: 'stretch' },
 });

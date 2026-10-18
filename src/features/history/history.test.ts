@@ -1,10 +1,12 @@
 import { describe, expect, it } from '@jest/globals';
 
-import type { CardEvent } from '../../domain/card';
+import { stamp as signedStamp } from '../../testing/protocol.test-utils';
+import type { StampEvent } from '../../domain/card';
 import { describeEvent, groupByMonth } from './history';
 
-const stamp = (nonceId: string, year: number, month: number, day = 1): CardEvent => ({
-  kind: 'stamp', count: 1, nonceId, at: new Date(year, month - 1, day, 12).getTime(),
+const proof = signedStamp(1, 1);
+const stamp = (nonceId: string, year: number, month: number, day = 1): StampEvent => ({
+  ...proof, nonceId, at: new Date(year, month - 1, day, 12).getTime(),
 });
 
 describe('groupByMonth', () => {
@@ -57,6 +59,6 @@ describe('describeEvent', () => {
   });
 
   it('capitalizes the configured reward noun for a redemption', () => {
-    expect(describeEvent({ kind: 'redeem', count: 1, at: 0, nonceId: 'reward' }, ' free coffee ')).toEqual({ title: 'Free coffee redeemed', kind: 'redeem' });
+    expect(describeEvent({ kind: 'redeem', spends: [{ nonceId: 'stamp', stamps: 9 }], via: 'code', at: 0, nonceId: 'reward' }, ' free coffee ')).toEqual({ title: 'Free coffee redeemed', kind: 'redeem' });
   });
 });

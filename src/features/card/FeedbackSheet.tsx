@@ -1,29 +1,13 @@
 import { CircleAlert, Gift } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { ZoomIn } from 'react-native-reanimated';
 
 import { AppText, Button } from '../../ui/primitives';
-import { Confetti } from '../../ui/motion';
+import { Appear, Confetti } from '../../ui/motion';
 import { Sheet } from '../../ui/Sheet';
 import { InkedStamp } from '../../ui/StampCard';
-import { font, space, useTheme, withAlpha } from '../../ui/theme';
+import { space, useTheme, withAlpha } from '../../ui/theme';
 import type { Feedback } from './feedback';
-
-/** Live clock so a barista can tell a fresh redemption from a screenshot. */
-function LiveClock() {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    // Subscription to wall-clock time.
-    const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  return (
-    <AppText style={{ fontFamily: font.displayBold, fontSize: 40, lineHeight: 46, fontVariant: ['tabular-nums'] }} accessibilityLabel={`Time now ${now.toLocaleTimeString()}`}>
-      {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-    </AppText>
-  );
-}
 
 function Badge({ feedback }: { feedback: Feedback }) {
   const { color } = useTheme();
@@ -32,16 +16,16 @@ function Badge({ feedback }: { feedback: Feedback }) {
     case 'stamped':
     case 'repeat':
       return (
-        <Animated.View entering={ZoomIn.springify().damping(10).stiffness(220)}>
+        <Appear from="pop">
           <InkedStamp size={size} index={3} />
-        </Animated.View>
+        </Appear>
       );
     case 'unlocked':
     case 'redeemed':
       return (
-        <Animated.View entering={ZoomIn.springify().damping(9)} style={[styles.badge, { width: size, height: size, backgroundColor: color.accent }]}>
+        <Appear from="pop" style={[styles.badge, { width: size, height: size, backgroundColor: color.accent }]}>
           <Gift size={size * 0.46} color={color.onAccent} strokeWidth={2} />
-        </Animated.View>
+        </Appear>
       );
     case 'problem':
       return (
@@ -71,11 +55,6 @@ export function FeedbackSheet({ feedback, onDismiss }: { feedback: Feedback | nu
           <AppText variant="body" tone="muted" align="center" style={{ marginTop: space.xs, maxWidth: 320 }}>
             {feedback.body}
           </AppText>
-          {feedback.kind === 'redeemed' ? (
-            <View style={{ marginTop: space.lg, alignItems: 'center' }}>
-              <LiveClock />
-            </View>
-          ) : null}
           {feedback.autoDismissMs ? null : (
             <Button label={feedback.kind === 'problem' ? 'OK' : feedback.kind === 'redeemed' ? 'Done' : 'Lovely'} onPress={onDismiss} style={{ alignSelf: 'stretch', marginTop: space.xl }} />
           )}

@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react-native';
-import { useEffect, useMemo } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { useEffect, useMemo, type ReactNode } from 'react';
+import { StyleSheet, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -8,11 +8,42 @@ import Animated, {
   useSharedValue,
   withDelay,
   withRepeat,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 
 import { useTheme, withAlpha } from './theme';
+
+export type AppearFrom = 'fade' | 'zoom' | 'pop' | 'rise';
+
+/**
+ * Animates its content in when it mounts. Use this instead of Reanimated
+ * `entering` layout animations: inside an Android Modal those intermittently
+ * leave the view stuck at its start values (invisible).
+ */
+export function Appear({ from = 'fade', delay = 0, style, children }: { from?: AppearFrom; delay?: number; style?: StyleProp<ViewStyle>; children?: ReactNode }) {
+  const reduceMotion = useReducedMotion();
+  const p = useSharedValue(reduceMotion ? 1 : 0);
+  useEffect(() => {
+    if (reduceMotion) return;
+    // Kick off the entrance on mount (an animation side effect, not state sync).
+    const to =
+      from === 'fade' ? withTiming(1, { duration: 200, easing: Easing.out(Easing.quad) })
+      : from === 'pop' ? withSpring(1, { damping: 9, stiffness: 200 })
+      : from === 'zoom' ? withSpring(1, { damping: 14, stiffness: 180 })
+      : withSpring(1, { damping: 16, stiffness: 160 });
+    p.set(delay > 0 ? withDelay(delay, to) : to);
+  }, [p, from, delay, reduceMotion]);
+  const animated = useAnimatedStyle(() => {
+    const v = p.get();
+    const opacity = Math.min(1, v * 2);
+    if (from === 'fade') return { opacity: v };
+    if (from === 'rise') return { opacity, transform: [{ translateY: (1 - v) * 24 }] };
+    return { opacity, transform: [{ scale: 0.3 + 0.7 * v }] };
+  });
+  return <Animated.View style={[style, animated]}>{children}</Animated.View>;
+}
 
 /** Concentric rings radiating from an icon: "this is where to tap". */
 export function NfcPulse({ icon: Icon, size = 160, active = true, tint }: { icon: LucideIcon; size?: number; active?: boolean; tint?: string }) {

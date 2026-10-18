@@ -2,7 +2,8 @@ import * as Haptics from 'expo-haptics';
 
 import { cafe } from '../../config';
 import { summarize } from '../../domain/card';
-import type { CardStore, IntakeSource, SubmitResult } from '../../state/cardStore';
+import type { TapReply } from '../../infra/nfcReader';
+import type { CardStore, IntakeEvent, IntakeSource } from '../../state/cardStore';
 import { describe, type Feedback } from './feedback';
 
 /** Haptic pattern per outcome: one "thump" per stamp, a flourish for rewards. */
@@ -24,19 +25,31 @@ function playHaptics(feedback: Feedback, stamps: number) {
   }
 }
 
-export type FeltResult = SubmitResult & { readonly feedback: Feedback };
-
-/** The one intake pipeline for every transport: apply, describe, buzz. */
-export async function submitWithFeedback(store: CardStore, uris: readonly string[], source: IntakeSource): Promise<FeltResult> {
-  const result = await store.submit(uris, source);
-  const summary = summarize(store.getSnapshot().card, cafe.rules);
-  const feedback = describe(result.event, {
+/** Describes an intake event against the card as it is now, and buzzes. */
+function feel(store: CardStore, event: IntakeEvent): Feedback {
+  const feedback = describe(event, {
     cafeName: cafe.name,
     rewardName: cafe.rules.rewardName,
     stampsPerReward: cafe.rules.stampsPerReward,
-    summary,
+    summary: summarize(store.getSnapshot().card, cafe.rules),
   });
-  const stamps = result.event.kind === 'success' && result.event.outcome.kind === 'stamped' ? result.event.outcome.added : 1;
-  playHaptics(feedback, stamps);
-  return { ...result, feedback };
+  playHaptics(feedback, event.kind === 'success' && event.outcome.kind === 'stamped' ? event.outcome.added : 1);
+  return feedback;
+}
+
+/** QR scans and deep links: apply, describe, buzz. */
+export async function submitWithFeedback(store: CardStore, uris: readonly string[], source: Exclude<IntakeSource, 'nfc'>): Promise<Feedback> {
+  return feel(store, await store.submit(uris, source));
+}
+
+/** NFC: the reply to write back, and the iOS sheet text once it's settled. */
+export async function tapWithFeedback(store: CardStore, uris: readonly string[]): Promise<TapReply> {
+  const exchange = await store.tap(uris);
+  return {
+    write: exchange.reply,
+    async settle(written) {
+      const feedback = feel(store, await exchange.finish(written));
+      return feedback.kind === 'problem' ? { errorMessage: feedback.short } : { successMessage: feedback.short };
+    },
+  };
 }

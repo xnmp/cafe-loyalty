@@ -3,11 +3,11 @@ import { useCallback, useEffect, useEffectEvent, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 
 import { cafe } from '../../config';
-import { buildAckLink } from '../../domain/link';
-import { cancelRead, getAvailability, openNfcSettings, readOnce, type NfcAvailability, type TapResponse } from '../../infra/nfcReader';
+import { cancelRead, getAvailability, openNfcSettings, readOnce, type NfcAvailability } from '../../infra/nfcReader';
 import type { IntakeSource } from '../../state/cardStore';
 import { useStores } from '../../state/AppProviders';
-import { submitWithFeedback, type FeltResult } from './submit';
+import type { Feedback } from './feedback';
+import { submitWithFeedback, tapWithFeedback } from './submit';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -20,7 +20,7 @@ export interface TapController {
   startSession(): void;
   openSettings(): void;
   /** For QR scans and deep links: same pipeline, same feedback. */
-  submit(uris: readonly string[], source: IntakeSource): Promise<FeltResult>;
+  submit(uris: readonly string[], source: Exclude<IntakeSource, 'nfc'>): Promise<Feedback>;
 }
 
 export function useTapToCollect({ paused }: { paused: boolean }): TapController {
@@ -29,19 +29,11 @@ export function useTapToCollect({ paused }: { paused: boolean }): TapController 
   const [reading, setReading] = useState(false);
   const passive = Platform.OS === 'android';
 
-  const submit = useCallback((uris: readonly string[], source: IntakeSource) => submitWithFeedback(card, uris, source), [card]);
-
-  const respond = useCallback(
-    async (uris: readonly string[]): Promise<TapResponse> => {
-      const { ack, feedback } = await submit(uris, 'nfc');
-      return {
-        ackUri: ack ? buildAckLink(cafe.scheme, ack) : undefined,
-        successMessage: feedback.kind === 'problem' ? undefined : feedback.short,
-        errorMessage: feedback.kind === 'problem' ? feedback.short : undefined,
-      };
-    },
-    [submit],
+  const submit = useCallback(
+    (uris: readonly string[], source: Exclude<IntakeSource, 'nfc'>) => submitWithFeedback(card, uris, source),
+    [card],
   );
+  const respond = useCallback((uris: readonly string[]) => tapWithFeedback(card, uris), [card]);
 
   // Re-check NFC whenever the screen gains focus or the app returns from Settings.
   useFocusEffect(

@@ -16,7 +16,8 @@ function Navigator() {
   const theme = useTheme();
   const cardState = useStore(card);
   const staffState = useStore(staff);
-  const ready = cardState.status === 'ready' && staffState.status !== 'loading';
+  // 'unavailable' storage still renders (the card screen offers a retry) rather than stalling on the splash.
+  const ready = cardState.status !== 'loading' && staffState.status !== 'loading';
   useEffect(() => {
     // Native splash is an external system: hide it once the first real screen can render.
     if (ready) void SplashScreen.hideAsync().catch(() => undefined);

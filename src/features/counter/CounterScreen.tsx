@@ -47,7 +47,9 @@ function midnight(now: number, days: number): number {
 export function CounterScreen({ credentials }: { credentials: StaffCredentials }) {
   useKeepAwake(); // HCE only answers while the screen is on.
   const { counter } = useStores();
-  const { log, offer } = useStore(counter);
+  const { log, offer, status } = useStore(counter);
+  // Offers wait for the log to load so a late load can't overwrite new entries.
+  const loading = status !== 'ready';
   const { color } = useTheme();
   const nfc = useNfcStatus();
   const [count, setCount] = useState(1);
@@ -93,7 +95,7 @@ export function CounterScreen({ credentials }: { credentials: StaffCredentials }
           </AppText>
           <View style={styles.stepper}>
             <StepButton icon={Minus} label="One fewer" disabled={count <= 1} onPress={() => setCount((c) => Math.max(1, c - 1))} />
-            <AppText style={[styles.count, { color: color.ink }]} accessibilityLabel={`${count} drinks`} accessibilityLiveRegion="polite">
+            <AppText style={[styles.count, { color: color.ink }]} accessibilityLabel={`${count} ${count === 1 ? 'drink' : 'drinks'}`} accessibilityLiveRegion="polite">
               {count}
             </AppText>
             <StepButton icon={Plus} label="One more" disabled={count >= max} onPress={() => setCount((c) => Math.min(max, c + 1))} />
@@ -101,12 +103,14 @@ export function CounterScreen({ credentials }: { credentials: StaffCredentials }
         </View>
 
         <View style={{ gap: space.sm }}>
-          <Button size="lg" icon={Coffee} label={count === 1 ? 'Give 1 stamp' : `Give ${count} stamps`} onPress={() => start('stamp', count)} testID="give-stamps" />
-          <Button size="lg" kind="secondary" icon={Gift} label={`Redeem ${rewardName}`} onPress={() => start('redeem', 1)} testID="redeem" />
+          <Button size="lg" icon={Coffee} label={count === 1 ? 'Give 1 stamp' : `Give ${count} stamps`} disabled={loading} onPress={() => start('stamp', count)} testID="give-stamps" />
+          <Button size="lg" kind="secondary" icon={Gift} label={`Redeem ${rewardName}`} disabled={loading} onPress={() => start('redeem', 1)} testID="redeem" />
         </View>
       </ScrollView>
 
-      {offer ? <OfferOverlay offer={offer} onCancel={counter.cancel} onDone={counter.dismiss} onShowQr={counter.showQr} /> : null}
+      {offer ? (
+        <OfferOverlay key={offer.record.nonceId} offer={offer} onCancel={counter.cancel} onDone={counter.dismiss} onShowQr={counter.showQr} onScan={counter.scanCode} />
+      ) : null}
     </Screen>
   );
 }

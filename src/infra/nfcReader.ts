@@ -6,7 +6,7 @@ import { encodeUriMessage, messageUris, type NdefRecord } from '../domain/ndef';
 
 /**
  * Customer-side NFC: read the counter device's NDEF URI, let the caller decide
- * what to do with it, optionally write an ack back, then close the session.
+ * what to do with it, optionally write a reply back, then close the session.
  *
  * iOS shows a system sheet per session (must be user-initiated). Android uses
  * reader mode, so the caller can keep a session open while the card screen is
@@ -15,13 +15,21 @@ import { encodeUriMessage, messageUris, type NdefRecord } from '../domain/ndef';
 
 export type NfcAvailability = 'ready' | 'disabled' | 'unsupported';
 
-export interface TapResponse {
-  /** URI to write back to the counter device (best effort). */
-  readonly ackUri?: string;
+export interface TapMessages {
   /** iOS sheet: shown with a checkmark as the session closes. */
   readonly successMessage?: string;
   /** iOS sheet: shown as an error as the session closes. */
   readonly errorMessage?: string;
+}
+
+export interface TapReply {
+  /** URI to write back to the counter device, if any. */
+  readonly write: string | null;
+  /**
+   * Called exactly once, after the write attempt (or straight away when there
+   * is nothing to write), with whether the counter device received it.
+   */
+  readonly settle: (written: boolean) => Promise<TapMessages>;
 }
 
 export type ReadOutcome = 'handled' | 'cancelled' | 'failed';
@@ -73,15 +81,17 @@ function isCancellation(e: unknown): boolean {
 }
 
 /**
- * Waits for one tag. `respond` receives the URIs on it and returns what to do
- * next. Resolves once the session is closed. Never throws.
+ * Waits for one tag. `respond` receives the URIs on it and says what to write
+ * back; its `settle` always runs once a reply was produced, even if the
+ * session drops. Resolves once the session is closed. Never throws.
  */
 export async function readOnce(
   prompt: string,
-  respond: (uris: readonly string[]) => Promise<TapResponse>,
+  respond: (uris: readonly string[]) => Promise<TapReply>,
 ): Promise<ReadOutcome> {
   let outcome: ReadOutcome = 'failed';
   let iosError: string | undefined;
+  let pending: TapReply | null = null;
   try {
     await ensureStarted();
     const tech = await NfcManager.requestTechnology(NfcTech.Ndef, requestOptions(prompt));
@@ -89,19 +99,28 @@ export async function readOnce(
 
     const tag = await NfcManager.getTag();
     const records = tag?.ndefMessage ?? (await NfcManager.ndefHandler.getNdefMessage())?.ndefMessage ?? [];
-    const response = await respond(messageUris(records.map(toDomainRecord)));
+    pending = await respond(messageUris(records.map(toDomainRecord)));
 
-    if (response.ackUri) {
-      // Purely informational for the barista; the stamp is already saved.
-      await NfcManager.ndefHandler.writeNdefMessage(Array.from(encodeUriMessage(response.ackUri))).catch(() => undefined);
+    let written = false;
+    if (pending.write) {
+      try {
+        await NfcManager.ndefHandler.writeNdefMessage(Array.from(encodeUriMessage(pending.write)));
+        written = true;
+      } catch {
+        // Phone moved away mid-write: settle(false) decides what that means.
+      }
     }
+    const reply = pending;
+    pending = null;
+    const messages = await reply.settle(written);
     if (Platform.OS === 'ios') {
-      if (response.errorMessage) iosError = response.errorMessage;
-      else if (response.successMessage) await NfcManager.setAlertMessageIOS(response.successMessage).catch(() => undefined);
+      if (messages.errorMessage) iosError = messages.errorMessage;
+      else if (messages.successMessage) await NfcManager.setAlertMessageIOS(messages.successMessage).catch(() => undefined);
     }
     outcome = 'handled';
   } catch (e) {
     outcome = isCancellation(e) ? 'cancelled' : 'failed';
+    if (pending) await pending.settle(false).catch(() => undefined);
   } finally {
     if (iosError) await NfcManager.invalidateSessionWithErrorIOS(iosError).catch(() => undefined);
     else await NfcManager.cancelTechnologyRequest({ delayMsAndroid: 0 }).catch(() => undefined);

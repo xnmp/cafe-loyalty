@@ -4,6 +4,10 @@ import { cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, statS
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
+import { buildStaffCode } from '../src/domain/provisioning';
+import { keyPairFromSeed } from '../src/domain/token';
+import { addPublicKey } from './lib/cafeKeys';
+
 const repo = resolve(__dirname, '..');
 const cli = join(repo, 'scripts/setup-cafe.ts');
 let root: string;
@@ -19,10 +23,16 @@ const config = () => JSON.parse(readFileSync(join(root, 'cafe.config.json'), 'ut
 const secret = (id: number) => join(root, 'cafe-secrets', `staff-key-${id}.txt`);
 const html = (id: number) => join(root, 'cafe-secrets', `staff-key-${id}.html`);
 
+// A fixture café with a throwaway key 1: the real config's keys and secrets
+// are never read, so rotating them can't break these tests.
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'cafe-cli-'));
-  cpSync(join(repo, 'cafe.config.json'), join(root, 'cafe.config.json'));
-  cpSync(join(repo, 'cafe-secrets'), join(root, 'cafe-secrets'), { recursive: true });
+  const seed = new Uint8Array(32).fill(7);
+  const real = JSON.parse(readFileSync(join(repo, 'cafe.config.json'), 'utf8'));
+  const fixture = addPublicKey({ ...real, keys: [] }, 1, keyPairFromSeed(seed).publicKey);
+  writeFileSync(join(root, 'cafe.config.json'), `${JSON.stringify(fixture, null, 2)}\n`);
+  mkdirSync(join(root, 'cafe-secrets'), { mode: 0o700 });
+  writeFileSync(secret(1), `${buildStaffCode(fixture.cafeId, 1, seed)}\n`, { mode: 0o600 });
 });
 afterEach(() => rmSync(root, { recursive: true, force: true }));
 

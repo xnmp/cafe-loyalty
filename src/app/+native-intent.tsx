@@ -14,12 +14,12 @@ export function redirectSystemPath({ path, initial }: { path: string; initial: b
     if (!parsed) return path;
     if (parsed.kind === 'token') {
       const stores = getStores();
-      void stores.ready.then(() => {
-        // A counter device ignores customer links.
-        if (stores.staff.getSnapshot().status === 'customer') {
-          return submitWithFeedback(stores.card, [path], 'link');
-        }
-      });
+      void stores.customerReady
+        .then(() => {
+          // A counter device ignores customer links.
+          if (stores.staff.getSnapshot().status === 'customer') return submitWithFeedback(stores.card, [path], 'link');
+        })
+        .catch(() => undefined);
     }
     // Stay where we are; on a cold start, land on the home route.
     return initial ? '/' : null;
