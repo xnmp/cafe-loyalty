@@ -58,7 +58,7 @@ export function renderProvisioningPage(page: ProvisioningPage): string {
 <p>Café: ${escapeHtml(cafeId)} · Key id: ${escapeHtml(String(keyId))}${demo ? ' (demo)' : ''}<br>Generated: ${escapeHtml(generatedAt)}</p>
 <p class="warning">${escapeHtml(notice)}</p>
 <div class="qr">${page.qrSvg}</div>
-<ol><li>Install the app on the counter phone.</li><li>Open About.</li><li>Press and hold the version number.</li><li>Select “Set up counter device”.</li><li>Scan this code.</li><li>Choose a staff PIN.</li></ol>
+<ol><li>Install the app on the counter phone.</li><li>Open About: the ⓘ button at the top of the card screen.</li><li>Press and hold the version number at the bottom for 2 seconds.</li><li>Tap “Scan staff code” and scan this code, or tap “Paste code instead” and paste the code below.</li><li>Choose a 4-digit staff PIN.</li></ol>
 <p>Staff code for manual entry:</p><pre class="code">${escapeHtml(staffCode)}</pre>
 </body></html>\n`;
 }

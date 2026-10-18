@@ -76,15 +76,15 @@ describe('renderProvisioningPage', () => {
     const html = renderProvisioningPage(page);
     for (const text of [page.cafeName, page.cafeId, page.generatedAt, page.staffCode, page.qrSvg,
       'Key id: 2', '6cm', '@media print', 'monospace', 'Install the app on the counter phone',
-      'Open About', 'Press and hold the version number', 'Set up counter device', 'Scan this code',
-      'Choose a staff PIN', 'Anyone with this code can issue stamps', 'Keep it private', 'Store it like a key']) {
+      'Open About', 'Press and hold the version number', 'Scan staff code', 'scan this code',
+      'Choose a 4-digit staff PIN', 'Anyone with this code can issue stamps', 'Keep it private', 'Store it like a key']) {
       expect(html).toContain(text);
     }
     expect(html).not.toMatch(/<(script|link|img)\b|@import|url\(/i);
   });
   test('the demo page says it is safe to share instead of warning', () => {
     const html = renderProvisioningPage({ ...page, keyId: 0, demo: true });
-    for (const text of ['Counter mode demo', 'Key id: 0 (demo)', 'safe to share', 'reject its stamps', page.staffCode, 'Set up counter device']) {
+    for (const text of ['Counter mode demo', 'Key id: 0 (demo)', 'safe to share', 'reject its stamps', page.staffCode, 'Scan staff code']) {
       expect(html).toContain(text);
     }
     expect(html).not.toContain('PRIVATE KEY');
