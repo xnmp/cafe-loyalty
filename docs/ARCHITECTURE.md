@@ -79,8 +79,10 @@ but nothing it says about that card is trusted when a reward is handed out.
     marked used on their phone.
   - If an NFC write reaches the counter but the customer's phone sees it fail,
     the reward stays on the card until the next attempt, which the counter
-    refuses as already used. The same goes if the phone can't save after the
-    counter took it; the phone then says to check the counter screen.
+    refuses as already used. If the phone can't save after the counter took
+    it, the phone says to check the counter screen and stops offering it, but
+    only in memory until a save works: restarted before then, it offers it
+    again and the counter refuses it as already used.
   - A malformed or empty request written by an NFC tool ends the counter's
     current offer with a refusal. Staff start it again.
   - With two counter phones, each keeps its own registry, so the same stamps

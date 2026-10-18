@@ -20,6 +20,12 @@ User-facing docs: [README](README.md), [release guide](docs/RELEASE.md),
 - **Not verified anywhere yet**: real NFC between two phones, iOS builds, the
   counter camera scanning a customer's code. `docs/RELEASE.md` §7 is the
   hardware checklist.
+- Security: one audit (Codex; its content filter cut it short, but its
+  findings were recovered from the transcript) and four review rounds of the
+  "open the reward before a tap can spend it" change. What's left is listed
+  as accepted risks, each with its limit, in `docs/ARCHITECTURE.md`.
+- Test build for the two-phone check: `dist/corner-cafe-test.apk` (current as
+  of the last commit).
 - Signing key: key 2 is the only trusted key (key 1 retired, its secret
   deleted). The secret and staff QR are in `cafe-secrets/` (gitignored, keep
   an offline backup).
