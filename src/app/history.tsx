@@ -1,5 +1,1 @@
-import { Screen } from '../ui/primitives';
-
-export default function Placeholder() {
-  return <Screen>{null}</Screen>;
-}
+export { HistoryScreen as default } from '../features/history/HistoryScreen';

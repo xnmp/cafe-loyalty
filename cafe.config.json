@@ -3,7 +3,8 @@
   "name": "Corner Café",
   "tagline": "Coffee, baked goods & good mornings",
   "scheme": "cornercafe",
-  "bundleId": "com.cornercafe.loyalty",
+  "bundleId": "md.chong.cafecard",
+  "easProjectId": "",
   "rules": {
     "stampsPerReward": 9,
     "maxStampsPerTap": 10,
@@ -43,6 +44,9 @@
     }
   },
   "keys": [
-    { "id": 1, "publicKey": "O-4dH4dD6_anVRsOUtqAqmr83NtFXNAQy4BzIhQB0Ts" }
+    {
+      "id": 1,
+      "publicKey": "O-4dH4dD6_anVRsOUtqAqmr83NtFXNAQy4BzIhQB0Ts"
+    }
   ]
 }

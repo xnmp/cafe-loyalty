@@ -36,6 +36,7 @@
     "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "2.6.2",
     "@testing-library/react-native": "^14.1.0",
     "@types/jest": "30.0.0",
     "@types/qrcode": "^1.5.6",
@@ -52,7 +53,8 @@
     "test": "jest",
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
-    "setup-cafe": "bun scripts/setup-cafe.ts"
+    "setup-cafe": "bun scripts/setup-cafe.ts",
+    "render-brand": "bun scripts/render-brand.ts"
   },
   "private": true,
   "jest": {

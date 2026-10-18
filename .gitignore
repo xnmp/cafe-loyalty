@@ -42,3 +42,7 @@ yarn-error.*
 
 # signing secrets for the counter device (never commit)
 /cafe-secrets
+
+# local module build output
+modules/*/android/build/
+modules/*/android/.cxx/

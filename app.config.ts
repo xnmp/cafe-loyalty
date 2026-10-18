@@ -85,4 +85,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ['expo-build-properties', { android: { minSdkVersion: 26 } }],
   ],
   experiments: { typedRoutes: true },
+  // Set by the owner after `eas init` (docs/RELEASE.md); absent for local builds.
+  ...(cafe.easProjectId ? { extra: { eas: { projectId: cafe.easProjectId } } } : {}),
 });

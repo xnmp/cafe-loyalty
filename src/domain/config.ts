@@ -34,6 +34,8 @@ export interface CafeConfig {
   /** Deep link scheme, lowercase letters/digits only. */
   readonly scheme: string;
   readonly bundleId: string;
+  /** EAS project id from `eas init`; empty until the app is linked to Expo's build service. */
+  readonly easProjectId?: string;
   readonly rules: Rules & {
     /** Singular noun phrase, e.g. "free drink". */
     readonly rewardName: string;

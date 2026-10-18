@@ -1,5 +1,1 @@
-import { Screen } from '../../ui/primitives';
-
-export default function Placeholder() {
-  return <Screen>{null}</Screen>;
-}
+export { SettingsScreen as default } from '../../features/counter/SettingsScreen';
