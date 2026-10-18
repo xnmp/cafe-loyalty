@@ -48,7 +48,7 @@ export function RedeemSheet({
       : 'press Tap the counter phone and hold your iPhone to it.';
 
   return (
-    <Sheet visible={visible} onDismiss={preparing ? undefined : onClose}>
+    <Sheet visible={visible} onDismiss={busy ? undefined : onClose}>
       {using?.kind === 'code' ? (
         <RedemptionCode link={using.link} onDone={onClose} />
       ) : (

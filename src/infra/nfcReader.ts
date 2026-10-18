@@ -105,6 +105,20 @@ export async function readOnce(
   prompt: string,
   respond: (uris: readonly string[]) => Promise<TapReply>,
 ): Promise<ReadOutcome> {
+  // One session at a time: a second start (a double press on iOS) must not
+  // fail its native request and then cancel the first session on cleanup.
+  if (sessionOpen) return 'cancelled';
+  sessionOpen = true;
+  try {
+    return await readSession(prompt, respond);
+  } finally {
+    sessionOpen = false;
+  }
+}
+
+let sessionOpen = false;
+
+async function readSession(prompt: string, respond: (uris: readonly string[]) => Promise<TapReply>): Promise<ReadOutcome> {
   let outcome: ReadOutcome = 'failed';
   let iosError: string | undefined;
   let pending: TapReply | null = null;

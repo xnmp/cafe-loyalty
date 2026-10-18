@@ -76,7 +76,7 @@ export interface CardStore extends Store<CardState> {
   submit(uris: readonly string[], source: Exclude<IntakeSource, 'nfc'>): Promise<IntakeEvent>;
   /** The customer opened a reward to use it. */
   openReward(): void;
-  /** Closes it, unless a code is being saved. */
+  /** Closes it, unless a code is being saved or a tap is handing over its stamps. */
   closeReward(): void;
   /** Spends the open reward on a code for the counter to scan. `busy`: the reward isn't open, or a tap or code is already using it. */
   showCode(): Promise<Result<{ readonly link: string; readonly event: RedeemEvent }, CodeError | 'busy'>>;
@@ -198,7 +198,11 @@ export function createCardStore(deps: CardStoreDeps): CardStore {
         const original = findEvent(card, plan.request.requestId) ?? findEvent(card, trigger);
         return settleTap(true, original ? event({ kind: 'repeat', original, source: 'nfc' }) : failure(committed.error, 'nfc'));
       }
-      if (!(await save(committed.value.card))) return settleTap(true, failure('redeem-not-saved', 'nfc'));
+      if (!(await save(committed.value.card))) {
+        // The counter has the stamps, so stop offering them: keep the spend in memory; the next save that works stores it.
+        store.set({ ...store.getSnapshot(), card: committed.value.card });
+        return settleTap(true, failure('redeem-not-saved', 'nfc'));
+      }
       return settleTap(true, event({ kind: 'success', outcome: committed.value.outcome, source: 'nfc' }));
     });
 
@@ -231,10 +235,11 @@ export function createCardStore(deps: CardStoreDeps): CardStore {
           const closed = publish(failure('reward-closed', 'nfc'));
           return { reply: null, finish: async () => closed };
         }
-        apply({ type: 'send' });
         const { plan, trigger } = handled;
+        const reply = buildRedeemLink(cafe.scheme, plan.request);
+        apply({ type: 'send' });
         return {
-          reply: buildRedeemLink(cafe.scheme, plan.request),
+          reply,
           finish: (delivered) => (delivered ? commit(plan, trigger) : Promise.resolve(settleTap(false, failure('not-delivered', 'nfc')))),
         };
       }),

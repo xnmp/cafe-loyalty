@@ -31,8 +31,9 @@ export function rewardUse(state: RewardUse, action: RewardUseAction): RewardUse 
     case 'open':
       return state === null ? { kind: 'open' } : state;
     case 'close':
-      // A code being saved needs somewhere to appear; everything else can close.
-      return state?.kind === 'preparing' ? state : null;
+      // Not mid-operation: a code being saved needs somewhere to appear, and a
+      // tap holds the reward until it settles (it always does, delivered or not).
+      return state?.kind === 'preparing' || state?.kind === 'sending' ? state : null;
     case 'send':
       return state?.kind === 'open' ? { kind: 'sending' } : state;
     case 'sent':

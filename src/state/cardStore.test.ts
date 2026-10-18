@@ -150,12 +150,30 @@ test('the reward stays open after a cut-off tap, closes once used, and can’t c
   expect(store.getSnapshot().using).toBeNull();
 });
 
-test('closing the reward mid-tap still records a tap that reached the counter', async () => {
-  const { store } = setup(cardOf(9));
+test('a tap holds the reward until it settles: closing, reopening and codes wait, even while its save is slow', async () => {
+  const { store, storage } = setup(cardOf(9, 9));
   const exchange = await openAndTap(store);
+  const save = storage.save;
+  let release = () => {};
+  const saving = new Promise<void>((started) => {
+    storage.save = (key, value) =>
+      new Promise((resolve) => {
+        release = () => resolve(save(key, value));
+        started();
+      });
+  });
+  const finishing = exchange.finish(true);
+  await saving;
+
   store.closeReward();
-  expect(await exchange.finish(true)).toMatchObject({ kind: 'success', outcome: { kind: 'redeemed' } });
-  expect(summarize(store.getSnapshot().card, cafe.rules).rewardsAvailable).toBe(0);
+  store.openReward();
+  expect(store.getSnapshot().using).toEqual({ kind: 'sending' });
+  const code = store.showCode();
+  release();
+  expect(await finishing).toMatchObject({ kind: 'success', outcome: { kind: 'redeemed' } });
+  expect(await code).toEqual({ ok: false, error: 'busy' });
+  expect(store.getSnapshot().using).toBeNull();
+  expect(summarize(store.getSnapshot().card, cafe.rules)).toMatchObject({ rewardsAvailable: 1, rewardsRedeemed: 1 });
 });
 
 test('without a reward, a redemption request is answered with progress only', async () => {
@@ -236,7 +254,28 @@ test('keeps the original data when loading had to drop damaged events, and backs
   expect([...clean.raw.keys()]).toEqual([CARD_KEY]);
 });
 
-test.each(['stamp', 'code', 'nfc'] as const)('save failure on %s leaves card unchanged', async (operation) => {
+test('a reward the counter took stays used on this phone even if saving fails, and is stored by the next save', async () => {
+  const initial = cardOf(9);
+  const { store, storage, raw } = setup(initial);
+  await store.load();
+  const save = storage.save;
+  storage.save = async () => { throw new Error('full'); };
+  const exchange = await openAndTap(store);
+  expect(await exchange.finish(true)).toMatchObject({ kind: 'error', error: 'redeem-not-saved' });
+  expect(store.getSnapshot().using).toBeNull();
+  expect(summarize(store.getSnapshot().card, cafe.rules).rewardsAvailable).toBe(0);
+  expect(JSON.parse(raw.get(CARD_KEY)!)).toEqual(initial);
+
+  // Nothing left to open or turn into a code; once storage works again the spend is saved with the next stamp.
+  store.dismiss(store.getSnapshot().lastEvent!.id);
+  store.openReward();
+  expect(await store.showCode()).toEqual({ ok: false, error: 'no-reward' });
+  storage.save = save;
+  await store.submit([link(21, 1)], 'qr');
+  expect(summarize(JSON.parse(raw.get(CARD_KEY)!), cafe.rules)).toMatchObject({ rewardsRedeemed: 1, unspentStamps: 1 });
+});
+
+test.each(['stamp', 'code'] as const)('save failure on %s leaves card unchanged', async (operation) => {
   const initial = cardOf(9);
   const { store, storage, raw } = setup(initial);
   await store.load();
@@ -244,11 +283,6 @@ test.each(['stamp', 'code', 'nfc'] as const)('save failure on %s leaves card unc
   if (operation === 'code') {
     store.openReward();
     expect(await store.showCode()).toEqual({ ok: false, error: 'storage' });
-  } else if (operation === 'nfc') {
-    const exchange = await openAndTap(store);
-    // The counter may already have taken it, so the customer is told to check there.
-    expect(await exchange.finish(true)).toMatchObject({ kind: 'error', error: 'redeem-not-saved' });
-    expect(store.getSnapshot().using).toBeNull();
   } else expect(await store.submit([link()], 'qr')).toMatchObject({ kind: 'error', error: 'storage' });
   expect(store.getSnapshot().card).toEqual(initial);
   expect(JSON.parse(raw.get(CARD_KEY)!)).toEqual(initial);
