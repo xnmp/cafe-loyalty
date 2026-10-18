@@ -80,12 +80,11 @@ export function offerView(offer: ActiveOffer, now: number, ctx: OfferViewContext
       stage: 'success',
       title: `${capitalise(reward)} verified`,
       body: 'Their stamps check out. Hand it over.',
-      autoCloseMs: 4000,
     };
   }
 
   if (offer.phase === 'done' && outcome?.kind === 'refused') {
-    return { ...base, stage: 'rejected', ...refusal(outcome.reason, outcome.at, outcome.progress, ctx) };
+    return { ...base, stage: 'rejected', ...refusal(outcome.reason, outcome.at, outcome.progress, now, ctx) };
   }
 
   if (offer.phase === 'checking') {
@@ -101,8 +100,8 @@ export function offerView(offer: ActiveOffer, now: number, ctx: OfferViewContext
 
   if (kind === 'redeem') {
     return offer.nfc
-      ? { ...base, stage: 'waiting', title: 'Tap phone here', body: `Or scan their ${reward} code: on their phone, tap the ${reward} ticket, then Show code.` }
-      : { ...base, stage: 'scan', title: 'Scan their code', body: `On their phone: tap the ${reward} ticket, then Show code.` };
+      ? { ...base, stage: 'waiting', title: 'Tap phone here', body: `Or scan their ${reward} code: on their phone, tap the ${reward} ticket, then Show my code.` }
+      : { ...base, stage: 'scan', title: 'Scan their code', body: `On their phone: tap the ${reward} ticket, then Show my code.` };
   }
 
   return {
@@ -115,11 +114,17 @@ export function offerView(offer: ActiveOffer, now: number, ctx: OfferViewContext
   };
 }
 
-function refusal(reason: RefusalReason, at: number | undefined, progress: number | undefined, ctx: OfferViewContext): { title: string; body: string } {
+/** A redemption this recent may be one the barista never saw confirmed (missed screen, app restart). */
+export const RECENT_REDEMPTION_MS = 10 * 60_000;
+
+function refusal(reason: RefusalReason, at: number | undefined, progress: number | undefined, now: number, ctx: OfferViewContext): { title: string; body: string } {
   const reward = ctx.rewardName;
   switch (reason) {
     case 'already-redeemed':
-      return { title: 'Already used', body: at !== undefined ? `This ${reward} was given ${ctx.formatWhen(at)}.` : `This ${reward} was already given.` };
+      if (at === undefined) return { title: 'Already used', body: `This ${reward} was already given.` };
+      return now - at < RECENT_REDEMPTION_MS
+        ? { title: 'Already used', body: `It was verified ${ctx.formatWhen(at)}, a few minutes ago. Only give it if you're sure nobody handed it over then.` }
+        : { title: 'Already used', body: `This ${reward} was given ${ctx.formatWhen(at)}.` };
     case 'stamps-used':
       return { title: 'Stamps already used', body: `Some of these stamps were spent before (perhaps copied from another phone). No ${reward}.` };
     case 'not-enough':

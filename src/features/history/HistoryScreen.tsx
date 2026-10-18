@@ -78,9 +78,10 @@ function HistoryRow({ event, first, last, onShowCode }: { event: CardEvent; firs
   const { title, kind } = describeEvent(event, cafe.rules.rewardName);
   const date = new Date(event.at);
   const when = `${date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })} · ${date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`;
-  // A code may never have been scanned, so it can be shown again.
-  const codeRedemption = event.kind === 'redeem' && event.via === 'code' ? event : null;
-  const detail = codeRedemption ? `${when} · Code — tap to show again` : when;
+  // Any redemption can be shown again as a code: one never scanned, or a tap the
+  // counter couldn't confirm, still counts; one already used is refused there.
+  const redemption = event.kind === 'redeem' ? event : null;
+  const detail = redemption ? `${when} · ${redemption.via === 'code' ? 'Code' : 'Tapped'} — tap to show code` : when;
   return (
     <View style={[
       styles.event,
@@ -88,7 +89,7 @@ function HistoryRow({ event, first, last, onShowCode }: { event: CardEvent; firs
       first && styles.firstEvent,
       last && styles.lastEvent,
     ]}>
-      <Row icon={kind === 'stamp' ? Stamp : Gift} title={title} detail={detail} last={last} onPress={codeRedemption ? () => onShowCode(codeRedemption) : undefined} />
+      <Row icon={kind === 'stamp' ? Stamp : Gift} title={title} detail={detail} last={last} onPress={redemption ? () => onShowCode(redemption) : undefined} />
     </View>
   );
 }

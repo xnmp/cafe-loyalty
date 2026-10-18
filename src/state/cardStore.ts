@@ -91,8 +91,8 @@ export function createCardStore(deps: CardStoreDeps): CardStore {
       store.set({ ...store.getSnapshot(), status: 'unavailable' });
       return null;
     }
-    if (loaded.kind === 'invalid') {
-      // Keep the damaged data rather than overwrite it with the next stamp.
+    if (loaded.kind === 'invalid' || (loaded.kind === 'ok' && loaded.value.dropped > 0)) {
+      // Keep damaged data (or the events parsing had to drop) rather than overwrite it with the next stamp.
       await deps.storage.save(`${CARD_KEY}.damaged.${deps.now()}`, loaded.raw).catch(() => undefined);
     }
     const card = loaded.kind === 'ok' ? loaded.value.card : emptyCard;

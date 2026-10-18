@@ -119,6 +119,21 @@ test.each(['{not json', 'null', '{"version":1,"events":[]}', '"not a card"'])('p
   expect(JSON.parse(raw.get(`${CARD_KEY}.damaged.${now}`)!)).toBe(damaged);
 });
 
+test('keeps the original data when loading had to drop damaged events, and backs nothing up for a clean card', async () => {
+  const card = cardOf(4, 3);
+  const damaged = JSON.stringify({ ...card, events: [card.events[0], { ...card.events[1], count: 0 }] });
+  const { store, raw } = setup();
+  raw.set(CARD_KEY, damaged);
+  await store.load();
+  expect(summarize(store.getSnapshot().card, cafe.rules).unspentStamps).toBe(4);
+  expect(await store.submit([link()], 'qr')).toMatchObject({ kind: 'success' });
+  expect(JSON.parse(raw.get(`${CARD_KEY}.damaged.${now}`)!)).toBe(damaged);
+
+  const clean = setup(card);
+  await clean.store.load();
+  expect([...clean.raw.keys()]).toEqual([CARD_KEY]);
+});
+
 test.each(['stamp', 'code', 'nfc'] as const)('save failure on %s leaves card unchanged', async (operation) => {
   const initial = cardOf(9);
   const { store, storage, raw } = setup(initial);

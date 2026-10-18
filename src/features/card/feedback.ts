@@ -45,7 +45,7 @@ export function describe(event: IntakeEvent, ctx: FeedbackContext): Feedback {
       return {
         kind: 'redeemed',
         title: `Enjoy your ${rewardName}!`,
-        body: 'The counter phone checks your stamps. Its screen shows the result.',
+        body: 'Check the counter screen. If it didn’t go through, show your code from History.',
         short: 'Redeemed — enjoy!',
       };
     }

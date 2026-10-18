@@ -39,15 +39,26 @@ but nothing it says about that card is trusted when a reward is handed out.
   already spent, then records the spend atomically. Only a verified request
   shows "verified" to the barista; an ack from the customer app never can. See
   `src/domain/redemption.ts`.
-- The request id is derived from the stamps it spends, so a retry after a
-  dropped NFC session is recognised instead of spending twice, and an old code
-  shown again is reported as "already used at …".
+- The request id is derived from the stamps it spends (and where in each stamp
+  they start), so the same reward presented twice (an old code shown again, or
+  a tap whose reply was cut off) is refused as "already used at …" instead of
+  spending twice. The customer app marks a reward used once its NFC write goes
+  through, or as soon as it shows the code. Every past redemption can be shown
+  again as a code from History, so a reward the counter couldn't confirm (say,
+  its database failed) isn't lost, and one it did confirm is refused.
+- The barista's "verified" screen stays up until closed. A request refused as
+  already used within the last 10 minutes says so, so staff can tell a missed
+  confirmation (or a counter restart mid-check) from an old code.
 - What this stops: forged stamps; copying a stamp token to other phones (only
   the first redemption that uses it succeeds); fake "redeemed" replies from an
   NFC tool; re-showing an old success screen or code; a rooted phone inflating
   its own card (the counter only accepts genuine, unspent proofs).
 - Accepted risks: a copied stamp *displays* on several phones until one of them
-  redeems it; with two counter phones, each keeps its own registry, so the same
+  redeems it, and a card holding stamps spent elsewhere (copied card, stale
+  backup) overstates its balance by exactly those stamps; the counter spends
+  only the unspent ones. If an NFC write reaches the counter but the customer's
+  phone sees it fail, the reward stays on the card until the next attempt,
+  which the counter refuses as already used; with two counter phones, each keeps its own registry, so the same
   stamps could be redeemed once on each; a lost customer phone loses its card
   unless restored from an OS backup; resetting the counter phone without its
   backup forgets which stamps were spent.

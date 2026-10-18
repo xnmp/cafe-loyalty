@@ -28,7 +28,7 @@ test.each([1, 2])('unlocking %i rewards uses reward feedback', (rewardsAvailable
 
 test.each(['nfc', 'code'] as const)('redeemed via %s', (via) => {
   const event: IntakeEvent = { ...eventBase, kind: 'success', outcome: { kind: 'redeemed', via, before: summarize(cardOf(9), rules), after: before } };
-  expect(describe(event, ctx)).toEqual({ kind: 'redeemed', title: 'Enjoy your free drink!', body: 'The counter phone checks your stamps. Its screen shows the result.', short: 'Redeemed — enjoy!' });
+  expect(describe(event, ctx)).toEqual({ kind: 'redeemed', title: 'Enjoy your free drink!', body: 'Check the counter screen. If it didn’t go through, show your code from History.', short: 'Redeemed — enjoy!' });
 });
 
 test.each([

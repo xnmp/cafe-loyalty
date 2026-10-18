@@ -86,7 +86,7 @@ function RedemptionCode({ link, onDone, again = false }: { link: string; onDone:
       </AppText>
       <AppText tone="muted" align="center" style={styles.body}>
         {again
-          ? "If it was scanned before, the counter phone will say so."
+          ? "If it was used before, the counter phone will say so."
           : 'They scan it with the counter phone. If it isn’t scanned, you can show it again from History.'}
       </AppText>
       <Button label="Done" onPress={onDone} style={styles.primary} />

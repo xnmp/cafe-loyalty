@@ -7,7 +7,8 @@ import * as SecureStore from 'expo-secure-store';
  */
 export type Loaded<T> =
   | { readonly kind: 'missing' }
-  | { readonly kind: 'ok'; readonly value: T }
+  /** `raw`: the stored text, kept so a caller can back it up if parsing lost data. */
+  | { readonly kind: 'ok'; readonly value: T; readonly raw: string }
   | { readonly kind: 'invalid'; readonly raw: string };
 
 /**
@@ -24,7 +25,7 @@ export function interpret<T>(raw: string | null, parse: (value: unknown) => T | 
   if (raw === null) return { kind: 'missing' };
   try {
     const value = parse(JSON.parse(raw));
-    return value === null ? { kind: 'invalid', raw } : { kind: 'ok', value };
+    return value === null ? { kind: 'invalid', raw } : { kind: 'ok', value, raw };
   } catch {
     return { kind: 'invalid', raw };
   }

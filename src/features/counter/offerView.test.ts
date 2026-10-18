@@ -3,7 +3,7 @@ import { expect, jest, test } from '@jest/globals';
 import type { AckStatus } from '../../domain/link';
 import { cafe, now } from '../../testing/protocol.test-utils';
 import type { ActiveOffer, RefusalReason } from '../../state/counterStore';
-import { ACK_GRACE_MS, offerView } from './offerView';
+import { ACK_GRACE_MS, RECENT_REDEMPTION_MS, offerView } from './offerView';
 
 const ctx = { stampsPerReward: 9, rewardName: 'free drink', formatWhen: jest.fn((at: number) => `at ${at}`) };
 const offer: ActiveOffer = {
@@ -16,8 +16,8 @@ const view = (value: ActiveOffer, at = now) => offerView(value, at, ctx);
 test.each([
   [offer, 'Giving 1 stamp', 'waiting', 'Tap phone here', 'Customer holds their phone against the back of this one. iPhone: open the app and press Tap to collect.'],
   [{ ...offer, record: { ...offer.record, count: 3 }, nfc: false, qrVisible: true }, 'Giving 3 stamps', 'waiting', 'Scan to collect', 'Customer scans this code with the app.'],
-  [redeem, 'Redeeming a free drink', 'waiting', 'Tap phone here', 'Or scan their free drink code: on their phone, tap the free drink ticket, then Show code.'],
-  [{ ...redeem, nfc: false }, 'Redeeming a free drink', 'scan', 'Scan their code', 'On their phone: tap the free drink ticket, then Show code.'],
+  [redeem, 'Redeeming a free drink', 'waiting', 'Tap phone here', 'Or scan their free drink code: on their phone, tap the free drink ticket, then Show my code.'],
+  [{ ...redeem, nfc: false }, 'Redeeming a free drink', 'scan', 'Scan their code', 'On their phone: tap the free drink ticket, then Show my code.'],
 ] as const)('waiting copy %#', (input, overline, stage, title, body) => {
   expect(view(input)).toEqual({ overline, stage, title, body, secondsLeft: 90, remaining: 1 });
 });
@@ -54,8 +54,10 @@ test.each([
   expect(view({ ...offer, phase: 'done', outcome: { kind: 'ack', ack: { nonceId: 'offer', status, progress: 0, rewardsAvailable: 0 } } })).toEqual({ overline: 'Giving 1 stamp', secondsLeft: 90, remaining: 1, stage: 'rejected', title, body });
 });
 
-test('verified copy', () => {
-  expect(view({ ...redeem, phase: 'done', outcome: { kind: 'verified', at: now } })).toMatchObject({ stage: 'success', title: 'Free drink verified', body: 'Their stamps check out. Hand it over.', autoCloseMs: 4000 });
+test('verified stays on screen until the barista closes it', () => {
+  const verified = view({ ...redeem, phase: 'done', outcome: { kind: 'verified', at: now } });
+  expect(verified).toMatchObject({ stage: 'success', title: 'Free drink verified', body: 'Their stamps check out. Hand it over.' });
+  expect(verified.autoCloseMs).toBeUndefined();
 });
 
 test.each([
@@ -69,6 +71,12 @@ test.each([
   ['unavailable', "Couldn't check", "This phone couldn't read its records. Try again."],
 ] satisfies [RefusalReason, string, string][])('refused %s copy', (reason, title, body) => {
   expect(view({ ...redeem, phase: 'done', outcome: { kind: 'refused', reason } })).toEqual({ overline: 'Redeeming a free drink', secondsLeft: 90, remaining: 1, stage: 'rejected', title, body });
+});
+
+test('a redemption verified minutes ago leaves the barista room to check it was handed over', () => {
+  const refused = (at: number) => view({ ...redeem, phase: 'done', outcome: { kind: 'refused', reason: 'already-redeemed', at } }).body;
+  expect(refused(now - 60_000)).toBe(`It was verified at ${now - 60_000}, a few minutes ago. Only give it if you're sure nobody handed it over then.`);
+  expect(refused(now - RECENT_REDEMPTION_MS)).toBe(`This free drink was given at ${now - RECENT_REDEMPTION_MS}.`);
 });
 
 test('already-redeemed uses injected formatting, including epoch zero', () => {
