@@ -52,7 +52,7 @@ test('parses persisted v2 ledger, including code redemption without trigger', ()
 test.each([null, [], {}, 'card', 1, { version: 1, events: [] }, { version: 2 }, { version: 2, events: {} }])('non-card %# returns null', (input) => expect(parseCard(input)).toBeNull());
 
 test.each([
-  null, [], {}, ...[{ kind: 'unknown' }, { count: -1 }, { count: 0 }, { count: 1.5 }, { count: NaN }, { count: Infinity }, { count: '1' }, { at: NaN }, { at: Infinity }, { at: '100' }, { at: 1e100 }, { at: -1 }, { at: 1.5 }, { nonceId: '' }, { nonceId: null }, { proof: null }, { proof: '!' }, { proof: 'a'.repeat(100000) }, { proof: '' }].map((override) => ({ ...first, ...override })),
+  null, [], {}, ...[{ kind: 'unknown' }, { count: -1 }, { count: 0 }, { count: 1.5 }, { count: NaN }, { count: Infinity }, { count: '1' }, { at: NaN }, { at: Infinity }, { at: '100' }, { at: 1e100 }, { at: -1e100 }, { nonceId: '' }, { nonceId: null }, { proof: null }, { proof: '!' }, { proof: 'a'.repeat(100000) }, { proof: '' }].map((override) => ({ ...first, ...override })),
   ...[{ via: 'qr' }, { spends: [] }, { spends: null }, { spends: [null] }, { spends: [{ nonceId: '', stamps: 1 }] }, { spends: [{ nonceId: 'x', stamps: 0 }] }, { spends: [{ nonceId: 'x', stamps: Infinity }] }, { spends: [{ nonceId: 'x', stamps: 1.5 }] }, { trigger: '' }, { trigger: null }].map((override) => ({ ...redeem, ...override })),
 ])('drops malformed event %# while preserving valid events', (bad) => {
   expect(parseCard({ version: 2, events: [bad, first, redeem] })).toEqual({ card: { version: 2, events: [first, redeem] }, dropped: 1 });
@@ -68,6 +68,10 @@ test('parses a large damaged ledger without losing surviving stamps', () => {
   expect(parsed.dropped).toBe(10000);
   expect(parsed.card.events).toHaveLength(10000);
   expect(summarize(parsed.card, rules).totalStamps).toBe(90000);
+});
+
+test.each([0, -1, 1700000000000.5, 8.64e15])('keeps an event whose odd time %p a date can still show', (at) => {
+  expect(parseCard({ version: 2, events: [{ ...first, at }] })).toEqual({ card: { version: 2, events: [{ ...first, at }] }, dropped: 0 });
 });
 
 test.each([0, 83, 85])('drops stamp proofs of %i bytes', (size) => {

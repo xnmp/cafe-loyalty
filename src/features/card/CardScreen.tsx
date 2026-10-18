@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { History, Info, Nfc, ScanLine, Smartphone } from 'lucide-react-native';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useReducer } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { cafe } from '../../config';
@@ -16,6 +16,7 @@ import { StampCard } from '../../ui/StampCard';
 import { space, useTheme, withAlpha } from '../../ui/theme';
 import { describe, progressLine } from './feedback';
 import { FeedbackSheet } from './FeedbackSheet';
+import { closedFlow, pausesReader, redeemFlow, tapMayUseReward } from './redeemFlow';
 import { RedeemSheet } from './RedeemSheet';
 import { useTapToCollect, type TapController } from './useTapToCollect';
 
@@ -34,21 +35,21 @@ export function CardScreen() {
     () => (lastEvent ? describe(lastEvent, { cafeName: cafe.name, rewardName, stampsPerReward, summary }) : null),
     [lastEvent, rewardName, stampsPerReward, summary],
   );
-  // `ready`: the customer opened their reward, so a tap may use it. `code`: they're using it by code instead.
-  // Each opening remounts the sheet so it starts at its first step.
-  const [redeem, setRedeem] = useState<'closed' | 'ready' | 'code'>('closed');
-  const [redeemKey, setRedeemKey] = useState(0);
-  const openRedeem = () => {
-    setRedeemKey((k) => k + 1);
-    setRedeem('ready');
-  };
+  const [redeem, dispatch] = useReducer(redeemFlow, closedFlow);
   // Don't read the counter phone while feedback or a code is on screen.
-  const tap = useTapToCollect({ paused: feedback !== null || redeem === 'code', useReward: redeem === 'ready' });
+  const tap = useTapToCollect({ paused: feedback !== null || pausesReader(redeem), useReward: tapMayUseReward(redeem) });
+
+  const showCode = async () => {
+    if (redeem.kind !== 'ready') return;
+    dispatch({ type: 'show-code' });
+    const result = await cardStore.redeemWithCode();
+    dispatch(result.ok ? { type: 'code-made', link: result.value.link } : { type: 'code-failed', error: result.error });
+  };
 
   const dismiss = useCallback(() => {
     if (!lastEvent) return;
     // Using the reward ends the redemption; after anything else (a stamp, a tap cut short) it's still open.
-    if (usedReward(lastEvent)) setRedeem('closed');
+    if (usedReward(lastEvent)) dispatch({ type: 'close' });
     cardStore.dismiss(lastEvent.id);
   }, [cardStore, lastEvent]);
 
@@ -93,7 +94,7 @@ export function CardScreen() {
 
         {rewardsShown > 0 ? (
           <View style={{ marginTop: space.lg }}>
-            <RewardTicket count={rewardsShown} rewardName={rewardName} onPress={openRedeem} />
+            <RewardTicket count={rewardsShown} rewardName={rewardName} onPress={() => dispatch({ type: 'open' })} />
           </View>
         ) : null}
 
@@ -104,12 +105,12 @@ export function CardScreen() {
       <FeedbackSheet feedback={feedback} onDismiss={dismiss} />
       {/* Steps aside while a tap's feedback shows, then comes back unless the reward was used. */}
       <RedeemSheet
-        key={redeemKey}
-        visible={redeem !== 'closed' && feedback === null}
+        flow={redeem}
+        visible={redeem.kind !== 'closed' && feedback === null}
         count={summary.rewardsAvailable}
         tap={tap}
-        onCodeShown={() => setRedeem('code')}
-        onClose={() => setRedeem('closed')}
+        onShowCode={() => void showCode()}
+        onClose={() => dispatch({ type: 'close' })}
       />
     </Screen>
   );

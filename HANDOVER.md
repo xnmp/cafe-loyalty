@@ -10,7 +10,7 @@ User-facing docs: [README](README.md), [release guide](docs/RELEASE.md),
   phone → iOS/Android customers), QR fallback both ways, counter-verified
   rewards with a SQLite spent-stamp registry, history, about, staff setup with
   PIN, counter settings.
-- `bun run test` (27 suites, ~720 tests), `bunx tsc --noEmit` and
+- `bun run test` (29 suites, ~750 tests), `bunx tsc --noEmit` and
   `bunx eslint . --quiet` all pass.
 - Verified on an Android emulator (no NFC): deep-link stamps, unlock, reward
   ticket → redeem sheet → code, code re-shown from History, the counter's
@@ -32,6 +32,10 @@ User-facing docs: [README](README.md), [release guide](docs/RELEASE.md),
   `src/ui/Sheet.tsx`). Reproduced roughly 1 in 6 opens before the fix, 0 in 50 after.
 - Reanimated reads reduced motion once per process (`transition_animation_scale`
   = 0); `uiautomator dump` on the emulator can flip animation scales to 0.
+- Whether an NFC tap may spend a reward is decided only by
+  `src/features/card/redeemFlow.ts`; the sheet and the reader both read it.
+  Don't add a second flag: the security review found the bugs where two
+  pieces of state disagreed.
 - A redemption code (QR) contains real signed stamps: never put one in a store
   screenshot. `scripts/render-store.ts` says so too.
 - Signature checks are slow without a JIT: about 1 s for 9 proofs under

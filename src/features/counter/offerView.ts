@@ -100,7 +100,7 @@ export function offerView(offer: ActiveOffer, now: number, ctx: OfferViewContext
 
   if (kind === 'redeem') {
     return offer.nfc
-      ? { ...base, stage: 'waiting', title: 'Tap phone here', body: `On their phone: tap the ${reward} ticket, then hold it here. Or scan their code.` }
+      ? { ...base, stage: 'waiting', title: 'Tap phone here', body: `On their phone: tap the ${reward} ticket, then hold it here (iPhone: press Tap the counter phone first). Or scan their code.` }
       : { ...base, stage: 'scan', title: 'Scan their code', body: `On their phone: tap the ${reward} ticket, then Show my code.` };
   }
 

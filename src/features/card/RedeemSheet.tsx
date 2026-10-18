@@ -1,59 +1,54 @@
 import { Gift, Nfc, QrCode, Smartphone } from 'lucide-react-native';
-import { useState } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
 import { cafe } from '../../config';
-import { useStores } from '../../state/AppProviders';
 import { Appear, NfcPulse } from '../../ui/motion';
 import { AppText, Button } from '../../ui/primitives';
 import { Sheet } from '../../ui/Sheet';
 import { elevation, radius, space, useTheme, withAlpha } from '../../ui/theme';
+import type { CodeError, RedeemFlow } from './redeemFlow';
 import type { TapController } from './useTapToCollect';
 
-type Step = { readonly kind: 'intro'; readonly error?: string } | { readonly kind: 'code'; readonly link: string };
+const codeErrors: Record<CodeError, string> = {
+  'no-reward': `There's no ${cafe.rules.rewardName} on your card right now.`,
+  storage: "Couldn't save that. Free up some space and try again.",
+};
 
 /**
- * Using a reward. While this is open a tap on the counter phone may spend it
- * (the caller passes that to the tap controller); nothing else can. Or the
- * customer shows a code and the counter phone scans it. Showing the code spends
- * the reward on this phone; it stays in History so it can be shown again if it
- * was never scanned. Mount with a fresh `key` each time it opens.
+ * Using a reward; `flow` (see redeemFlow.ts) is the single source of truth.
+ * While it's open a tap on the counter phone may spend it. Or the customer
+ * shows a code and the counter phone scans it: that spends the reward on this
+ * phone, and it stays in History so it can be shown again if never scanned.
  */
 export function RedeemSheet({
+  flow,
   visible,
   count,
   tap,
-  onCodeShown,
+  onShowCode,
   onClose,
 }: {
+  flow: RedeemFlow;
   visible: boolean;
   count: number;
   tap: TapController;
-  onCodeShown: () => void;
+  onShowCode: () => void;
   onClose: () => void;
 }) {
-  const { card } = useStores();
-  const [step, setStep] = useState<Step>({ kind: 'intro' });
-  const [busy, setBusy] = useState(false);
   const { rewardName } = cafe.rules;
   const nfcReady = tap.availability === 'ready';
-
-  const showCode = async () => {
-    if (busy) return;
-    setBusy(true);
-    const result = await card.redeemWithCode();
-    setBusy(false);
-    if (result.ok) {
-      setStep({ kind: 'code', link: result.value.link });
-      onCodeShown();
-    } else setStep({ kind: 'intro', error: result.error === 'no-reward' ? `There's no ${rewardName} on your card right now.` : "Couldn't save that. Free up some space and try again." });
-  };
+  const preparing = flow.kind === 'preparing';
+  const howTo = !nfcReady
+    ? 'show them your code.'
+    : tap.passive
+      ? 'hold your phone to the counter phone.'
+      : 'press Tap the counter phone and hold your iPhone to it.';
 
   return (
-    <Sheet visible={visible} onDismiss={onClose}>
-      {step.kind === 'code' ? (
-        <RedemptionCode link={step.link} onDone={onClose} />
+    <Sheet visible={visible} onDismiss={preparing ? undefined : onClose}>
+      {flow.kind === 'code' ? (
+        <RedemptionCode link={flow.link} onDone={onClose} />
       ) : (
         <View style={styles.content}>
           <GiftBadge />
@@ -61,34 +56,33 @@ export function RedeemSheet({
             {count > 1 ? `${count} ${rewardName}s ready` : `Your ${rewardName}`}
           </AppText>
           <AppText tone="muted" align="center" style={styles.body}>
-            {nfcReady
-              ? 'Ask for it when you order. When the barista is ready, hold your phone to the counter phone.'
-              : 'Ask for it when you order. When the barista is ready, show them your code.'}
+            {`Ask for it when you order. When the barista is ready, ${howTo}`}
           </AppText>
-          {step.error ? (
+          {flow.kind === 'ready' && flow.error ? (
             <AppText variant="callout" tone="danger" align="center" accessibilityLiveRegion="polite" style={{ marginTop: space.sm }}>
-              {step.error}
+              {codeErrors[flow.error]}
             </AppText>
           ) : null}
           {nfcReady ? (
             tap.passive ? (
-              <ReadyToTap />
+              <ReadyToTap active={!preparing} />
             ) : (
-              <Button icon={Nfc} label="Tap the counter phone" busy={tap.reading} onPress={tap.startSession} style={styles.primary} />
+              <Button icon={Nfc} label="Tap the counter phone" busy={tap.reading} disabled={preparing} onPress={tap.startSession} style={styles.primary} />
             )
           ) : null}
           <Button
             icon={QrCode}
             kind={nfcReady ? 'secondary' : 'primary'}
             label="Show my code"
-            busy={busy}
-            onPress={() => void showCode()}
+            busy={preparing}
+            disabled={tap.reading}
+            onPress={onShowCode}
             style={nfcReady ? styles.secondary : styles.primary}
           />
           <AppText variant="caption" tone="muted" align="center" style={{ marginTop: space.xs }}>
             {`Showing the code uses ${count > 1 ? `one ${rewardName}` : `your ${rewardName}`}.`}
           </AppText>
-          <Button kind="ghost" label="Not now" onPress={onClose} style={{ alignSelf: 'stretch', marginTop: space.xs }} />
+          <Button kind="ghost" label="Not now" disabled={preparing} onPress={onClose} style={{ alignSelf: 'stretch', marginTop: space.xs }} />
         </View>
       )}
     </Sheet>
@@ -128,7 +122,7 @@ function RedemptionCode({ link, onDone, again = false }: { link: string; onDone:
 }
 
 /** Android keeps reading while the sheet is open, so there's nothing to press. */
-function ReadyToTap() {
+function ReadyToTap({ active }: { active: boolean }) {
   const { color } = useTheme();
   return (
     <View
@@ -136,7 +130,7 @@ function ReadyToTap() {
       accessible
       accessibilityLabel="Ready. Hold your phone against the back of the counter phone."
     >
-      <NfcPulse icon={Smartphone} size={52} />
+      <NfcPulse icon={Smartphone} size={52} active={active} />
       <View style={{ flex: 1 }}>
         <AppText variant="heading">Ready to tap</AppText>
         <AppText variant="caption" tone="muted" style={{ marginTop: 2 }}>

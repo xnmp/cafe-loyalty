@@ -16,7 +16,7 @@ const view = (value: ActiveOffer, at = now) => offerView(value, at, ctx);
 test.each([
   [offer, 'Giving 1 stamp', 'waiting', 'Tap phone here', 'Customer holds their phone against the back of this one. iPhone: open the app and press Tap to collect.'],
   [{ ...offer, record: { ...offer.record, count: 3 }, nfc: false, qrVisible: true }, 'Giving 3 stamps', 'waiting', 'Scan to collect', 'Customer scans this code with the app.'],
-  [redeem, 'Redeeming a free drink', 'waiting', 'Tap phone here', 'On their phone: tap the free drink ticket, then hold it here. Or scan their code.'],
+  [redeem, 'Redeeming a free drink', 'waiting', 'Tap phone here', 'On their phone: tap the free drink ticket, then hold it here (iPhone: press Tap the counter phone first). Or scan their code.'],
   [{ ...redeem, nfc: false }, 'Redeeming a free drink', 'scan', 'Scan their code', 'On their phone: tap the free drink ticket, then Show my code.'],
 ] as const)('waiting copy %#', (input, overline, stage, title, body) => {
   expect(view(input)).toEqual({ overline, stage, title, body, secondsLeft: 90, remaining: 1 });
