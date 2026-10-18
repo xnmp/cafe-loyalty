@@ -99,8 +99,10 @@ From here to the public store:
    a new app). Then give people both links, in order:
    join <https://groups.google.com/g/eastern-concourse-cafe-testers>, then opt in at
    <https://play.google.com/apps/testing/md.chong.cafecard> and install from Play.
-   Café regulars and staff make good testers: print the two links as QR codes at
-   the counter.
+   Café regulars and staff make good testers. Print the counter sign with both
+   links as QR codes: `docs/testers/index.html`, published at
+   <https://xnmp.github.io/cafe-loyalty/testers/> (regenerate with
+   `bun run render-tester-sign https://groups.google.com/g/eastern-concourse-cafe-testers`).
 3. **Production**: this is a personal developer account, so Play requires **at
    least 12 testers opted in for the last 14 days** of a closed test first. Then
    Dashboard → *Apply for production* (a short questionnaire about the test). Once

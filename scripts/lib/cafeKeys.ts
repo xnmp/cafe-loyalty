@@ -23,7 +23,7 @@ export function removeKey(config: CafeConfig, id: number): CafeConfig {
   return { ...config, keys: config.keys.filter((key) => key.id !== id) };
 }
 
-const escapeHtml = (text: string): string => text.replace(/[&<>"']/g, (char) => ({
+export const escapeHtml = (text: string): string => text.replace(/[&<>"']/g, (char) => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
 })[char]!);
 

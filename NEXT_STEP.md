@@ -54,8 +54,9 @@ you there.
 
 You'll get an email, and Publishing overview stops saying "Changes in review".
 
-- [ ] **Send each tester these two links, in order.** A sign with QR codes at
-      the counter works well.
+- [ ] **Send each tester these two links, in order**, or print the counter
+      sign with both as QR codes: <https://xnmp.github.io/cafe-loyalty/testers/>
+      (`bun run render-tester-sign <group URL>` regenerates it).
       1. **Join the group:** <https://groups.google.com/g/eastern-concourse-cafe-testers>
          (with the Google account on their phone)
       2. **Opt in, then install:** <https://play.google.com/apps/testing/md.chong.cafecard>

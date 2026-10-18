@@ -61,7 +61,8 @@
     "lint": "expo lint",
     "setup-cafe": "bun scripts/setup-cafe.ts",
     "render-brand": "bun scripts/render-brand.ts",
-    "render-store": "bun scripts/render-store.ts"
+    "render-store": "bun scripts/render-store.ts",
+    "render-tester-sign": "bun scripts/render-tester-sign.ts"
   },
   "private": true,
   "jest": {
