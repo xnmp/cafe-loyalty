@@ -72,10 +72,10 @@ export function Squishy({
       hitSlop={hitSlop}
       disabled={disabled}
       onPressIn={() => {
-        scale.value = withSpring(0.96, { damping: 20, stiffness: 400 });
+        scale.set(withSpring(0.96, { damping: 20, stiffness: 400 }));
       }}
       onPressOut={() => {
-        scale.value = withSpring(1, { damping: 14, stiffness: 300 });
+        scale.set(withSpring(1, { damping: 14, stiffness: 300 }));
       }}
       onPress={() => {
         if (haptic) void Haptics.selectionAsync().catch(() => undefined);

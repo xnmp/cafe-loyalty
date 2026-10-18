@@ -1,5 +1,5 @@
 import { Check, CircleAlert, QrCode, Smartphone, X } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { ActivityIndicator, Modal, StyleSheet, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
@@ -9,23 +9,15 @@ import { cafe } from '../../config';
 import type { ActiveOffer } from '../../state/counterStore';
 import { AppText, Button } from '../../ui/primitives';
 import { CountdownRing, NfcPulse } from '../../ui/motion';
+import { useNow } from '../../ui/useNow';
 import { elevation, radius, space, useTheme, withAlpha } from '../../ui/theme';
 import { offerView } from './offerView';
 
 /** Ticks once a second while mounted (subscription to wall-clock time). */
-function useNow(): number {
-  const [now, setNow] = useState(Date.now);
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 500);
-    return () => clearInterval(id);
-  }, []);
-  return now;
-}
-
 export function OfferOverlay({ offer, onCancel, onDone, onShowQr }: { offer: ActiveOffer; onCancel: () => void; onDone: () => void; onShowQr: () => void }) {
   const theme = useTheme();
   const { color } = theme;
-  const now = useNow();
+  const now = useNow(500);
   const view = offerView(offer, now, cafe.rules);
   const finished = view.stage === 'success' || view.stage === 'rejected' || view.stage === 'delivered';
 

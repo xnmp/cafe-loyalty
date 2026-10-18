@@ -75,7 +75,7 @@ export function AboutScreen() {
             <ShieldCheck size={space.xl} color={color.accent} strokeWidth={2} />
           </View>
           <AppText variant="title" accessibilityRole="header">Your privacy</AppText>
-          <AppText tone="muted">Your card lives only on this phone. No account, no sign-up, no tracking. When you tap, the counter phone only sees your stamp count. Your card is included in your phone's normal backups.</AppText>
+          <AppText tone="muted">Your card lives only on this phone. No account, no sign-up, no tracking. When you tap, the counter phone only sees your stamp count. Your card is included in your phone’s normal backups.</AppText>
         </Group>
 
         <Pressable

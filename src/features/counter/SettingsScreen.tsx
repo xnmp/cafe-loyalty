@@ -129,7 +129,7 @@ export function SettingsScreen() {
       <Sheet visible={confirmLeave} onDismiss={busy ? undefined : () => setConfirmLeave(false)}>
         <View style={styles.sheet}>
           <AppText variant="title" accessibilityRole="header">Stop using this phone as the counter?</AppText>
-          <AppText tone="muted">It goes back to being a normal customer phone. You'll need the staff code to set it up again.</AppText>
+          <AppText tone="muted">It goes back to being a normal customer phone. You’ll need the staff code to set it up again.</AppText>
           {error ? <AppText tone="danger" accessibilityLiveRegion="polite">{error}</AppText> : null}
           <Button label="Stop using as counter" kind="danger" busy={busy} onPress={() => void leave()} />
           <Button label="Keep it" kind="secondary" disabled={busy} onPress={() => setConfirmLeave(false)} />

@@ -74,25 +74,33 @@ export function CountdownRing({ size, progress, stroke = 4 }: { size: number; pr
   );
 }
 
+/** Stable pseudo-random number in [0, 1) for an integer (integer hash), so the burst looks the same every time. */
+function noise(n: number): number {
+  let h = Math.imul(n ^ 0x9e3779b9, 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+  return ((h ^ (h >>> 16)) >>> 0) / 0x100000000;
+}
+
 /** A short, tasteful burst of paper confetti. Renders nothing with reduced motion. */
 export function Confetti({ count = 28 }: { count?: number }) {
   const { color } = useTheme();
   const { width, height } = useWindowDimensions();
   const reduceMotion = useReducedMotion();
   const pieces = useMemo(() => {
-    let s = 1234567;
-    const rand = () => ((s = (Math.imul(s, 1103515245) + 12345) >>> 0) / 0x100000000);
     const palette = [color.accent, color.ink, color.success, color.line, color.accent];
-    return Array.from({ length: count }, (_, i) => ({
-      x: rand() * width,
-      drift: (rand() - 0.5) * 120,
-      delay: rand() * 350,
-      duration: 1600 + rand() * 1200,
-      w: 6 + rand() * 6,
-      h: 10 + rand() * 8,
-      spin: (rand() > 0.5 ? 1 : -1) * (360 + rand() * 540),
-      color: palette[i % palette.length],
-    }));
+    return Array.from({ length: count }, (_, i) => {
+      const r = (k: number) => noise(i * 8 + k);
+      return {
+        x: r(0) * width,
+        drift: (r(1) - 0.5) * 120,
+        delay: r(2) * 350,
+        duration: 1600 + r(3) * 1200,
+        w: 6 + r(4) * 6,
+        h: 10 + r(5) * 8,
+        spin: (r(6) > 0.5 ? 1 : -1) * (360 + r(7) * 540),
+        color: palette[i % palette.length],
+      };
+    });
   }, [count, width, color]);
   if (reduceMotion) return null;
   return (
@@ -108,7 +116,7 @@ function Piece({ x, drift, delay, duration, w, h, spin, color, fall }: { x: numb
   const t = useSharedValue(0);
   useEffect(() => {
     // Kick off the fall on mount (an animation side effect, not state sync).
-    t.value = withDelay(delay, withTiming(1, { duration, easing: Easing.in(Easing.quad) }));
+    t.set(withDelay(delay, withTiming(1, { duration, easing: Easing.in(Easing.quad) })));
   }, [t, delay, duration]);
   const style = useAnimatedStyle(() => ({
     opacity: 1 - t.value * t.value,

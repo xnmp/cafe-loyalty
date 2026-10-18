@@ -14,6 +14,8 @@ export interface Stores {
   readonly card: CardStore;
   readonly staff: StaffStore;
   readonly counter: CounterStore;
+  /** Resolves once every store has loaded from storage. */
+  readonly ready: Promise<void>;
 }
 
 /** Real dependencies. Created once per app process. */
@@ -42,21 +44,29 @@ function createStores(): Stores {
   });
   hce.addReadListener((e) => counter.onTagRead(e.offerId));
   hce.addWriteListener((e) => counter.onTagWrite(e.offerId, e.message));
-  void card.load();
-  void staff.load();
-  void counter.load();
-  return { card, staff, counter };
+  const ready = Promise.all([card.load(), staff.load(), counter.load()]).then(() => undefined);
+  return { card, staff, counter, ready };
 }
 
 let singleton: Stores | null = null;
+
+/**
+ * The process-wide stores, created on first use. Exposed for code that runs
+ * outside React (e.g. expo-router's +native-intent), which can fire before the
+ * first render on a cold start.
+ */
+export function getStores(): Stores {
+  singleton ??= createStores();
+  return singleton;
+}
 const StoresContext = createContext<Stores | null>(null);
 
 export function AppProviders({ children }: { children: ReactNode }) {
-  singleton ??= createStores();
+  const stores = getStores();
   const scheme = useColorScheme();
   const theme = useMemo(() => themeFor(scheme === 'dark'), [scheme]);
   return (
-    <StoresContext.Provider value={singleton}>
+    <StoresContext.Provider value={stores}>
       <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>
     </StoresContext.Provider>
   );

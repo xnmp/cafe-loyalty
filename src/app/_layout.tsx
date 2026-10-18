@@ -1,4 +1,5 @@
 import { Stack } from 'expo-router';
+import { useEffect } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -16,7 +17,10 @@ function Navigator() {
   const cardState = useStore(card);
   const staffState = useStore(staff);
   const ready = cardState.status === 'ready' && staffState.status !== 'loading';
-  if (ready) void SplashScreen.hideAsync().catch(() => undefined);
+  useEffect(() => {
+    // Native splash is an external system: hide it once the first real screen can render.
+    if (ready) void SplashScreen.hideAsync().catch(() => undefined);
+  }, [ready]);
 
   return (
     <>
@@ -32,7 +36,6 @@ function Navigator() {
         <Stack.Screen name="history" />
         <Stack.Screen name="about" />
         <Stack.Screen name="scan" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
-        <Stack.Screen name="t/[token]" options={{ animation: 'none' }} />
         <Stack.Screen name="staff/setup" options={{ presentation: 'modal' }} />
         <Stack.Screen name="counter/index" options={{ gestureEnabled: false }} />
         <Stack.Screen name="counter/settings" options={{ presentation: 'modal' }} />

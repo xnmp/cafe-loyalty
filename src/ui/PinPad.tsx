@@ -1,5 +1,5 @@
 import { Delete } from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
@@ -20,7 +20,6 @@ export function PinPad({ title, subtitle, length = 4, error, onComplete, disable
   const { height, width } = useWindowDimensions();
   const [availableHeight, setAvailableHeight] = useState(height);
   const [headingHeight, setHeadingHeight] = useState(180);
-  const digits = useRef('');
   const [entry, setEntry] = useState('');
   const [previousError, setPreviousError] = useState(error);
   const reduceMotion = useReducedMotion();
@@ -32,31 +31,26 @@ export function PinPad({ title, subtitle, length = 4, error, onComplete, disable
 
   if (previousError !== error) {
     setPreviousError(error);
-    if (error) {
-      digits.current = '';
-      setEntry('');
-    }
+    if (error) setEntry('');
   }
 
   useEffect(() => {
     if (!error || disabled) return;
-    offset.value = reduceMotion ? 0 : withSequence(
+    offset.set(reduceMotion ? 0 : withSequence(
       withTiming(-space.xs, { duration: 60 }), withTiming(space.xs, { duration: 90 }),
       withTiming(-space.xxs, { duration: 70 }), withTiming(0, { duration: 60 }),
-    );
+    ));
   }, [disabled, error, offset, reduceMotion]);
 
   const enter = (digit: string) => {
-    if (disabled || digits.current.length >= count) return;
-    const next = digits.current + digit;
-    digits.current = next;
+    if (disabled || entry.length >= count) return;
+    const next = entry + digit;
     setEntry(next);
     if (next.length === count) onComplete(next);
   };
   const remove = () => {
     if (disabled) return;
-    digits.current = digits.current.slice(0, -1);
-    setEntry(digits.current);
+    setEntry(entry.slice(0, -1));
   };
 
   return (

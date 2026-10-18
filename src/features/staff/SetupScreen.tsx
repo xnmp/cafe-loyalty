@@ -76,7 +76,7 @@ export function SetupScreen() {
         <ScrollView contentContainerStyle={[styles.content, styles.intro]}>
           <View style={[styles.emblem, { backgroundColor: color.accentSoft }]}><KeyRound size={space.xxxl} strokeWidth={2} color={color.accent} /></View>
           <AppText variant="display" align="center" accessibilityRole="header">Make this the counter phone</AppText>
-          <AppText tone="muted" align="center">This phone will hand out stamps. You'll need the staff code printed by the café owner (from bun run setup-cafe).</AppText>
+          <AppText tone="muted" align="center">This phone will hand out stamps. You’ll need the staff code from the café owner.</AppText>
           {state.error ? <View style={[styles.callout, { backgroundColor: withAlpha(color.danger, 0.1) }]}><AppText tone="danger" variant="callout" accessibilityLiveRegion="polite">{state.error}</AppText></View> : null}
           <Button label="Scan staff code" icon={QrCode} onPress={() => { acceptingCode.current = false; dispatch({ type: 'scan' }); }} />
           <Button label="Paste code instead" kind="ghost" onPress={() => { acceptingCode.current = false; dispatch({ type: 'paste' }); }} />

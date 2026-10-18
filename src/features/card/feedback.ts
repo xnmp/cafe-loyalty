@@ -32,6 +32,7 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 export function progressLine(summary: CardSummary, stampsPerReward: number, rewardName: string): string {
   const left = stampsPerReward - summary.progress;
   if (summary.progress === 0 && summary.totalStamps === 0) return `Collect ${stampsPerReward} stamps for a ${rewardName}.`;
+  if (summary.progress === 0) return `Fresh card · ${stampsPerReward} stamps to your next ${rewardName}`;
   return `${summary.progress} of ${stampsPerReward} · ${plural(left, 'more stamp', 'more stamps')} to your ${rewardName}`;
 }
 

@@ -1,5 +1,5 @@
-import { useFocusEffect } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useFocusEffect, useIsFocused } from 'expo-router';
+import { useCallback, useEffect, useEffectEvent, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 
 import { cafe } from '../../config';
@@ -58,29 +58,29 @@ export function useTapToCollect({ paused }: { paused: boolean }): TapController 
   );
 
   // Android: keep reader mode running while the card is on screen.
-  const pausedRef = useRef(paused);
-  pausedRef.current = paused;
-  useFocusEffect(
-    useCallback(() => {
-      if (!passive || availability !== 'ready') return;
-      let active = true;
-      void (async () => {
-        while (active) {
-          if (pausedRef.current || AppState.currentState !== 'active') {
-            await sleep(400);
-            continue;
-          }
-          const outcome = await readOnce('', respond);
-          // Give the phone time to leave the field so the same tap isn't read twice.
-          await sleep(outcome === 'handled' ? 1800 : outcome === 'failed' ? 800 : 250);
+  // Pausing skips the next read rather than cancelling the current one, so an
+  // in-flight ack write still reaches the counter phone.
+  const isPaused = useEffectEvent(() => paused);
+  const focused = useIsFocused();
+  useEffect(() => {
+    if (!focused || !passive || availability !== 'ready') return;
+    let active = true;
+    void (async () => {
+      while (active) {
+        if (isPaused() || AppState.currentState !== 'active') {
+          await sleep(400);
+          continue;
         }
-      })();
-      return () => {
-        active = false;
-        void cancelRead();
-      };
-    }, [passive, availability, respond]),
-  );
+        const outcome = await readOnce('', respond);
+        // Give the phone time to leave the field so the same tap isn't read twice.
+        await sleep(outcome === 'handled' ? 1800 : outcome === 'failed' ? 800 : 250);
+      }
+    })();
+    return () => {
+      active = false;
+      void cancelRead();
+    };
+  }, [focused, passive, availability, respond]);
 
   const startSession = useCallback(() => {
     if (reading) return;

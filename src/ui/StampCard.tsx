@@ -108,17 +108,17 @@ const Slot = memo(function Slot({ size, index, filled, delay }: { size: number; 
 
   useOnChange(filled, (isFilled) => {
     if (reduceMotion) {
-      opacity.value = isFilled ? 1 : 0;
+      opacity.set(isFilled ? 1 : 0);
       return;
     }
     if (isFilled) {
       // Rubber stamp: comes down big and twisted, lands with a spring.
-      opacity.value = withDelay(delay, withTiming(1, { duration: 80 }));
-      scale.value = withDelay(delay, withSequence(withTiming(1.7, { duration: 0 }), withSpring(1, { damping: 11, stiffness: 260, mass: 0.7 })));
-      turn.value = withDelay(delay, withSequence(withTiming(rotation - 18, { duration: 0 }), withSpring(rotation, { damping: 12 })));
+      opacity.set(withDelay(delay, withTiming(1, { duration: 80 })));
+      scale.set(withDelay(delay, withSequence(withTiming(1.7, { duration: 0 }), withSpring(1, { damping: 11, stiffness: 260, mass: 0.7 }))));
+      turn.set(withDelay(delay, withSequence(withTiming(rotation - 18, { duration: 0 }), withSpring(rotation, { damping: 12 }))));
     } else {
-      opacity.value = withDelay(index * 40, withTiming(0, { duration: 220 }));
-      scale.value = 1;
+      opacity.set(withDelay(index * 40, withTiming(0, { duration: 220 })));
+      scale.set(1);
     }
   });
 
@@ -147,11 +147,11 @@ function RewardSlot({ size, lit, label }: { size: number; lit: boolean; label: s
   const pop = useSharedValue(1);
   useOnChange(lit, (isLit) => {
     if (reduceMotion) {
-      glow.value = isLit ? 1 : 0;
+      glow.set(isLit ? 1 : 0);
       return;
     }
-    glow.value = withTiming(isLit ? 1 : 0, { duration: 260 });
-    if (isLit) pop.value = withDelay(1500, withSequence(withSpring(1.22, { damping: 6 }), withSpring(1)));
+    glow.set(withTiming(isLit ? 1 : 0, { duration: 260 }));
+    if (isLit) pop.set(withDelay(1500, withSequence(withSpring(1.22, { damping: 6 }), withSpring(1))));
   });
   const glowStyle = useAnimatedStyle(() => ({ opacity: glow.value, transform: [{ scale: pop.value }] }));
   return (
@@ -185,6 +185,11 @@ export interface StampCardProps {
   caption: string;
 }
 
+const REWARD = -1;
+
+const chunk = <T,>(items: readonly T[], size: number): T[][] =>
+  Array.from({ length: Math.ceil(items.length / size) }, (_, i) => items.slice(i * size, i * size + size));
+
 /** Grid layout: one row up to 6 slots, else two rows, else three. */
 export function gridFor(slots: number): { rows: number; cols: number } {
   const rows = slots <= 6 ? 1 : slots <= 12 ? 2 : 3;
@@ -194,16 +199,15 @@ export function gridFor(slots: number): { rows: number; cols: number } {
 export function StampCard({ cafeName, stampsPerReward, filled, staggerFrom, rewardLit, caption }: StampCardProps) {
   const theme = useTheme();
   const { color } = theme;
-  const [width, setWidth] = useState(0);
+  // Measured on the grid itself so borders/padding can't make a row overflow and wrap.
+  const [gridWidth, setGridWidth] = useState(0);
   const total = stampsPerReward + 1;
   const { cols } = gridFor(total);
-  const innerWidth = width - space.xl * 2;
   const gap = space.xs;
-  const size = innerWidth > 0 ? Math.min(64, Math.floor((innerWidth - gap * (cols - 1)) / cols)) : 0;
+  const size = gridWidth > 0 ? Math.min(64, Math.floor((gridWidth - gap * (cols - 1) - 1) / cols)) : 0;
 
   return (
     <View
-      onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}
       style={[styles.card, { backgroundColor: color.paper, borderColor: withAlpha(color.ink, theme.dark ? 0.12 : 0.06) }, elevation(theme, 2)]}
       accessible
       accessibilityRole="summary"
@@ -223,18 +227,25 @@ export function StampCard({ cafeName, stampsPerReward, filled, staggerFrom, rewa
         </View>
       </View>
 
+      <View style={styles.gridFrame} onLayout={(e: LayoutChangeEvent) => setGridWidth(e.nativeEvent.layout.width)}>
       {size > 0 ? (
-        <View style={[styles.grid, { gap, columnGap: gap }]}>
-          {Array.from({ length: stampsPerReward }, (_, i) => (
-            <View key={i} style={{ width: size, marginBottom: space.xs }}>
-              <Slot size={size} index={i} filled={i < filled} delay={Math.max(0, i - staggerFrom) * 170} />
+        <View style={{ gap: space.sm }}>
+          {chunk([...Array.from({ length: stampsPerReward }, (_, i) => i), REWARD], cols).map((row, r) => (
+            <View key={r} style={[styles.row, { gap }]}>
+              {row.map((i) =>
+                i === REWARD ? (
+                  <RewardSlot key="reward" size={size} lit={rewardLit} label="Free" />
+                ) : (
+                  <Slot key={i} size={size} index={i} filled={i < filled} delay={Math.max(0, i - staggerFrom) * 170} />
+                ),
+              )}
             </View>
           ))}
-          <RewardSlot size={size} lit={rewardLit} label="Free" />
         </View>
       ) : (
         <View style={{ height: 140 }} />
       )}
+      </View>
 
       <View style={[styles.perforation, { borderColor: color.line }]} />
       <AppText variant="callout" tone="muted" style={{ paddingHorizontal: space.xl }}>
@@ -254,6 +265,7 @@ const styles = StyleSheet.create({
   },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: space.xl, marginBottom: space.lg },
   seal: { width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', paddingHorizontal: space.xl },
+  gridFrame: { marginHorizontal: space.xl },
+  row: { flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-start' },
   perforation: { borderTopWidth: 1.5, borderStyle: 'dashed', marginHorizontal: space.xl, marginTop: space.sm, marginBottom: space.md },
 });

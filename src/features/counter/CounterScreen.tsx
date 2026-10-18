@@ -13,6 +13,7 @@ import { useStores } from '../../state/AppProviders';
 import { useStore } from '../../state/store';
 import { AppText, Button, IconButton, Screen, Squishy } from '../../ui/primitives';
 import { font, radius, space, useTheme, withAlpha } from '../../ui/theme';
+import { useNow } from '../../ui/useNow';
 import { OfferOverlay } from './OfferOverlay';
 
 type NfcStatus = 'ready' | 'off' | 'unsupported';
@@ -35,9 +36,11 @@ function useNfcStatus(): NfcStatus {
   return status;
 }
 
-function startOfToday(now: number): number {
+/** Local midnight `days` days from the day containing `now` (DST-safe). */
+function midnight(now: number, days: number): number {
   const d = new Date(now);
   d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + days);
   return d.getTime();
 }
 
@@ -51,8 +54,10 @@ export function CounterScreen({ credentials }: { credentials: StaffCredentials }
   const max = cafe.rules.maxStampsPerTap;
   const { rewardName } = cafe.rules;
 
-  const now = Date.now();
-  const today = useMemo(() => statsBetween(log, startOfToday(now), now + 1), [log, now]);
+  // Coarse clock: only needed to roll "today" over at midnight.
+  const now = useNow(60_000);
+  const dayStart = midnight(now, 0);
+  const today = useMemo(() => statsBetween(log, dayStart, midnight(dayStart, 1)), [log, dayStart]);
 
   const start = (kind: TokenKind, n: number) => {
     counter.offer(credentials, kind, n);
