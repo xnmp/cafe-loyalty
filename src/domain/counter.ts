@@ -1,0 +1,152 @@
+import type { Ack } from './link';
+import { buildTokenLink } from './link';
+import { encodeUriMessage } from './ndef';
+import { nonceId, signToken, type TokenKind } from './token';
+
+/**
+ * Counter-device side: issuing one-time tokens and keeping a short local log
+ * so staff can see today's activity. The log is informational only.
+ */
+
+export type DeliveryStatus =
+  /** Token is being offered (NFC armed and/or QR visible). */
+  | 'offered'
+  /** A phone read the whole NDEF message over NFC. */
+  | 'read'
+  /** The customer app wrote an ack back. */
+  | 'acked'
+  /** Staff cancelled, or it timed out, before any phone read it. */
+  | 'withdrawn';
+
+export interface IssuedToken {
+  readonly nonceId: string;
+  readonly kind: TokenKind;
+  readonly count: number;
+  /** Epoch ms. */
+  readonly issuedAt: number;
+  readonly status: DeliveryStatus;
+  /** True if the token was shown as a QR code (delivery can't be observed). */
+  readonly shownAsQr: boolean;
+  readonly ack: Ack | null;
+}
+
+export interface CounterLog {
+  readonly version: 1;
+  readonly issued: readonly IssuedToken[];
+}
+
+export const emptyCounterLog: CounterLog = { version: 1, issued: [] };
+
+export const LOG_RETENTION_MS = 35 * 24 * 60 * 60 * 1000;
+
+export interface IssueParams {
+  readonly kind: TokenKind;
+  readonly count: number;
+  readonly now: number;
+  readonly nonce: Uint8Array;
+  readonly keyId: number;
+  readonly secretKey: Uint8Array;
+  readonly cafeId: string;
+  readonly scheme: string;
+}
+
+export interface Offer {
+  readonly token: Uint8Array;
+  readonly link: string;
+  /** NDEF message bytes for the HCE emulator. */
+  readonly ndef: Uint8Array;
+  readonly record: IssuedToken;
+}
+
+export function createOffer(p: IssueParams): Offer {
+  const token = signToken(
+    { kind: p.kind, keyId: p.keyId, count: p.count, issuedAt: Math.floor(p.now / 1000), nonce: p.nonce },
+    p.secretKey,
+    p.cafeId,
+  );
+  const link = buildTokenLink(p.scheme, token);
+  return {
+    token,
+    link,
+    ndef: encodeUriMessage(link),
+    record: {
+      nonceId: nonceId(p.nonce),
+      kind: p.kind,
+      count: p.count,
+      issuedAt: p.now,
+      status: 'offered',
+      shownAsQr: false,
+      ack: null,
+    },
+  };
+}
+
+/** Adds a newly offered token and drops entries past retention. */
+export function logOffer(log: CounterLog, record: IssuedToken, now: number): CounterLog {
+  const kept = log.issued.filter((t) => now - t.issuedAt <= LOG_RETENTION_MS);
+  return { ...log, issued: [...kept, record] };
+}
+
+const updateEntry = (log: CounterLog, id: string, f: (t: IssuedToken) => IssuedToken): CounterLog => ({
+  ...log,
+  issued: log.issued.map((t) => (t.nonceId === id ? f(t) : t)),
+});
+
+export const markShownAsQr = (log: CounterLog, id: string): CounterLog =>
+  updateEntry(log, id, (t) => ({ ...t, shownAsQr: true }));
+
+export const markRead = (log: CounterLog, id: string): CounterLog =>
+  updateEntry(log, id, (t) => (t.status === 'offered' || t.status === 'withdrawn' ? { ...t, status: 'read' } : t));
+
+/** Marks an offer withdrawn unless a phone already took it. */
+export const markWithdrawn = (log: CounterLog, id: string): CounterLog =>
+  updateEntry(log, id, (t) => (t.status === 'offered' ? { ...t, status: 'withdrawn' } : t));
+
+const isSuccess = (ack: Ack | null): boolean => ack?.status === 'stamped' || ack?.status === 'redeemed';
+
+/**
+ * Records an ack. A success is never overwritten by a later failure for the
+ * same nonce (a second tap of the same phone reports 'already-used').
+ */
+export const recordAck = (log: CounterLog, ack: Ack): CounterLog =>
+  updateEntry(log, ack.nonceId, (t) => (isSuccess(t.ack) ? t : { ...t, status: 'acked', ack }));
+
+export interface CounterStats {
+  readonly stamps: number;
+  readonly rewards: number;
+}
+
+/**
+ * Activity in [from, to). Counts tokens that left the device (read over NFC,
+ * acked, or shown as QR) and were not explicitly rejected by the customer app.
+ */
+export function statsBetween(log: CounterLog, from: number, to: number): CounterStats {
+  const delivered = log.issued.filter(
+    (t) =>
+      t.issuedAt >= from &&
+      t.issuedAt < to &&
+      (t.status === 'read' || t.status === 'acked' || t.shownAsQr) &&
+      (t.ack === null || isSuccess(t.ack)),
+  );
+  return {
+    stamps: delivered.reduce((n, t) => (t.kind === 'stamp' ? n + t.count : n), 0),
+    rewards: delivered.reduce((n, t) => (t.kind === 'redeem' ? n + t.count : n), 0),
+  };
+}
+
+export function parseCounterLog(value: unknown): CounterLog | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const v = value as { version?: unknown; issued?: unknown };
+  if (v.version !== 1 || !Array.isArray(v.issued)) return null;
+  const valid = v.issued.every(
+    (t: unknown) =>
+      typeof t === 'object' &&
+      t !== null &&
+      typeof (t as IssuedToken).nonceId === 'string' &&
+      ((t as IssuedToken).kind === 'stamp' || (t as IssuedToken).kind === 'redeem') &&
+      typeof (t as IssuedToken).count === 'number' &&
+      typeof (t as IssuedToken).issuedAt === 'number' &&
+      typeof (t as IssuedToken).status === 'string',
+  );
+  return valid ? (value as CounterLog) : null;
+}

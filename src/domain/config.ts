@@ -1,0 +1,100 @@
+import { fromBase64Url } from './bytes';
+import type { Rules } from './card';
+import { err, ok, type Result } from './result';
+import type { KeyRing } from './token';
+
+/** Shape of cafe.config.json. Everything café-specific lives there. */
+
+export interface Palette {
+  /** Screen background. */
+  readonly background: string;
+  /** Raised surfaces: sheets, list rows. */
+  readonly surface: string;
+  /** The loyalty card itself. */
+  readonly paper: string;
+  /** Primary text. */
+  readonly ink: string;
+  /** Secondary text. */
+  readonly inkMuted: string;
+  /** Hairlines, empty stamp outlines. */
+  readonly line: string;
+  /** Brand accent: stamps, primary buttons. */
+  readonly accent: string;
+  /** Text/icons on top of accent. */
+  readonly onAccent: string;
+  readonly success: string;
+  readonly danger: string;
+}
+
+export interface CafeConfig {
+  /** Lowercase slug; part of the token signature, so changing it invalidates outstanding tokens. */
+  readonly cafeId: string;
+  readonly name: string;
+  readonly tagline: string;
+  /** Deep link scheme, lowercase letters/digits only. */
+  readonly scheme: string;
+  readonly bundleId: string;
+  readonly rules: Rules & {
+    /** Singular noun phrase, e.g. "free drink". */
+    readonly rewardName: string;
+  };
+  readonly contact: {
+    readonly address: string;
+    readonly hours: readonly string[];
+    readonly phone: string;
+    readonly website: string;
+    readonly instagram: string;
+  };
+  readonly theme: { readonly light: Palette; readonly dark: Palette };
+  readonly keys: readonly { readonly id: number; readonly publicKey: string }[];
+}
+
+const PALETTE_KEYS: readonly (keyof Palette)[] = [
+  'background', 'surface', 'paper', 'ink', 'inkMuted', 'line', 'accent', 'onAccent', 'success', 'danger',
+];
+
+const HEX = /^#[0-9a-fA-F]{6}$/;
+
+/** Validates the parsed config and returns a list of human-readable problems if any. */
+export function validateConfig(c: CafeConfig): Result<CafeConfig, readonly string[]> {
+  const problems: string[] = [];
+  const check = (cond: boolean, msg: string) => {
+    if (!cond) problems.push(msg);
+  };
+
+  check(/^[a-z0-9]+(-[a-z0-9]+)*$/.test(c.cafeId ?? ''), 'cafeId must be a lowercase slug like "corner-cafe"');
+  check(typeof c.name === 'string' && c.name.trim().length > 0, 'name is required');
+  check(/^[a-z][a-z0-9]{1,31}$/.test(c.scheme ?? ''), 'scheme must be lowercase letters/digits, starting with a letter');
+  check(/^[a-zA-Z][a-zA-Z0-9]*(\.[a-zA-Z][a-zA-Z0-9]*)+$/.test(c.bundleId ?? ''), 'bundleId must look like com.example.app');
+  check(Number.isInteger(c.rules?.stampsPerReward) && c.rules.stampsPerReward >= 2 && c.rules.stampsPerReward <= 20,
+    'rules.stampsPerReward must be an integer between 2 and 20');
+  check(Number.isInteger(c.rules?.maxStampsPerTap) && c.rules.maxStampsPerTap >= 1 && c.rules.maxStampsPerTap <= 50,
+    'rules.maxStampsPerTap must be an integer between 1 and 50');
+  check(typeof c.rules?.rewardName === 'string' && c.rules.rewardName.length > 0, 'rules.rewardName is required');
+
+  for (const mode of ['light', 'dark'] as const) {
+    for (const key of PALETTE_KEYS) {
+      check(HEX.test(c.theme?.[mode]?.[key] ?? ''), `theme.${mode}.${key} must be a #rrggbb colour`);
+    }
+  }
+
+  check(Array.isArray(c.keys) && c.keys.length > 0, 'keys must list at least one public key (run `bun run setup-cafe`)');
+  const ids = new Set<number>();
+  for (const k of c.keys ?? []) {
+    check(Number.isInteger(k.id) && k.id >= 0 && k.id <= 255, `key id ${k.id} must be 0–255`);
+    check(!ids.has(k.id), `duplicate key id ${k.id}`);
+    ids.add(k.id);
+    check(fromBase64Url(k.publicKey ?? '')?.length === 32, `key ${k.id} publicKey must be 32 bytes base64url`);
+  }
+
+  return problems.length === 0 ? ok(c) : err(problems);
+}
+
+export function keyRingOf(c: CafeConfig): KeyRing {
+  return new Map(
+    c.keys.flatMap((k) => {
+      const bytes = fromBase64Url(k.publicKey);
+      return bytes && bytes.length === 32 ? [[k.id, bytes] as const] : [];
+    }),
+  );
+}

@@ -1,0 +1,48 @@
+{
+  "cafeId": "corner-cafe",
+  "name": "Corner Café",
+  "tagline": "Coffee, baked goods & good mornings",
+  "scheme": "cornercafe",
+  "bundleId": "com.cornercafe.loyalty",
+  "rules": {
+    "stampsPerReward": 9,
+    "maxStampsPerTap": 10,
+    "rewardName": "free drink"
+  },
+  "contact": {
+    "address": "",
+    "hours": [],
+    "phone": "",
+    "website": "",
+    "instagram": ""
+  },
+  "theme": {
+    "light": {
+      "background": "#F2EBE1",
+      "surface": "#FBF7F1",
+      "paper": "#FFFCF7",
+      "ink": "#2A1E17",
+      "inkMuted": "#7D6B5E",
+      "line": "#E2D6C7",
+      "accent": "#B4532A",
+      "onAccent": "#FFF8F1",
+      "success": "#2F7A55",
+      "danger": "#B3261E"
+    },
+    "dark": {
+      "background": "#14100D",
+      "surface": "#1E1814",
+      "paper": "#2A221C",
+      "ink": "#F3EADF",
+      "inkMuted": "#A8978A",
+      "line": "#3D322A",
+      "accent": "#E27A4E",
+      "onAccent": "#1A100B",
+      "success": "#5FBF8F",
+      "danger": "#F2B8B5"
+    }
+  },
+  "keys": [
+    { "id": 1, "publicKey": "O-4dH4dD6_anVRsOUtqAqmr83NtFXNAQy4BzIhQB0Ts" }
+  ]
+}

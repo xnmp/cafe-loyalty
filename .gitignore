@@ -39,3 +39,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# signing secrets for the counter device (never commit)
+/cafe-secrets
