@@ -104,9 +104,11 @@ jobs:
           # for the screen to settle first, so this shot is taken from here.
           xcrun simctl openurl "$DEVICE" "$(bun scripts/dev-token.ts stamp 1)"
           sleep 1.2
-          xcrun simctl io "$DEVICE" screenshot app-store/02-stamp-added.png
-          maestro --device "$DEVICE" test e2e/app-store-screenshots/2-rest.yaml -e OUT="$PWD/app-store/" \
+          # No Dynamic Island cut-out, like Maestro's own screenshots.
+          xcrun simctl io "$DEVICE" screenshot --mask=ignored app-store/02-stamp-added.png
+          maestro --device "$DEVICE" test e2e/app-store-screenshots/2-rest.yaml --test-output-dir maestro-out \
             -e STAMP3="$(bun scripts/dev-token.ts stamp 3)"
+          find maestro-out -name '0[0-9]-*.png' -exec cp {} app-store/ \;
           for f in app-store/*.png; do sips -g pixelWidth -g pixelHeight "$f" | tr '\n' ' '; echo; done
 
       - uses: actions/upload-artifact@v4
@@ -118,4 +120,5 @@ jobs:
             app-store/*.png
             xcodebuild.log
             ~/.maestro/tests/**/*
+            maestro-out/**/*
           if-no-files-found: warn
