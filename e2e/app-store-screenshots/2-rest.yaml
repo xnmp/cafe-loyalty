@@ -10,9 +10,17 @@ appId: md.chong.cafecard
 - extendedWaitUntil:
     visible: "Stamp added"
     timeout: 60000
-- waitForAnimationToEnd:
-    timeout: 1200
+# No waitForAnimationToEnd here: the card's ripple never stops, so it runs for
+# about 15 s whatever its timeout says, and the sheet is gone by then. Take one
+# straight away and one a hierarchy check later, in case the first catches the
+# sheet still sliding in (only the first is copied; the other is in the run's
+# artifact).
 - takeScreenshot: 02-stamp-added
+- runFlow:
+    when:
+      visible: "Stamp added"
+    commands:
+      - takeScreenshot: later-02-stamp-added
 - extendedWaitUntil:
     notVisible: "Stamp added"
     timeout: 20000
