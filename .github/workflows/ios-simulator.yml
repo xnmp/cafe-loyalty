@@ -64,8 +64,14 @@ jobs:
           plutil -p "$APP/Info.plist" | grep -A3 -E 'NFCReaderUsageDescription|iso7816.select-identifiers'
           grep -A4 'nfc.readersession.formats' "ios/$PROJECT/$PROJECT.entitlements"
 
-      # Deep links can't open other screens here: the simulator stops at an
-      # "Open in …?" prompt that only a tap dismisses.
+      # History shows times of day: make them the café's, not the runner's UTC.
+      # Set before the simulator boots, which reads the zone then.
+      - name: Use the café's time zone
+        if: inputs.screenshots
+        run: sudo systemsetup -settimezone Australia/Sydney > /dev/null
+
+      # A quick start-up check. The screenshot flows below also drive the app
+      # with stamp links (the first stops at an "Open in …?" prompt they tap).
       - name: Launch and screenshot
         run: |
           APP=$(find build/Build/Products/Release-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
@@ -100,14 +106,23 @@ jobs:
           mkdir -p app-store
           # Links are only valid for 15 minutes, so each is made just before use.
           maestro --device "$DEVICE" test e2e/app-store-screenshots/1-start.yaml -e STAMP5="$(bun scripts/dev-token.ts stamp 5)"
-          # The "Stamp added" sheet closes itself after 2.6 s, but Maestro's openLink waits
-          # for the screen to settle first, so this shot is taken from here.
-          xcrun simctl openurl "$DEVICE" "$(bun scripts/dev-token.ts stamp 1)"
-          sleep 1.2
-          # No Dynamic Island cut-out, like Maestro's own screenshots.
-          xcrun simctl io "$DEVICE" screenshot --mask=ignored app-store/02-stamp-added.png
+          # Part 2 is watching for the "Stamp added" sheet once its "ready" marker exists
+          # (see 2-rest.yaml): only then open the stamp link.
+          STAMP1="$(bun scripts/dev-token.ts stamp 1)"
+          (
+            for _ in $(seq 120); do
+              if [ -n "$(find maestro-out -name ready.png 2>/dev/null)" ]; then
+                sleep 2
+                xcrun simctl openurl "$DEVICE" "$STAMP1"
+                exit 0
+              fi
+              sleep 1
+            done
+            echo "Maestro never got ready for the stamp link" >&2
+          ) &
           maestro --device "$DEVICE" test e2e/app-store-screenshots/2-rest.yaml --test-output-dir maestro-out \
             -e STAMP3="$(bun scripts/dev-token.ts stamp 3)"
+          wait
           find maestro-out -name '0[0-9]-*.png' -exec cp {} app-store/ \;
           for f in app-store/*.png; do sips -g pixelWidth -g pixelHeight "$f" | tr '\n' ' '; echo; done
 

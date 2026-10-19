@@ -1,8 +1,18 @@
-# App Store screenshots, part 2 of 2: carries on from the card with 6 stamps.
+# App Store screenshots, part 2 of 2: carries on from the card with 5 stamps.
 #   STAMP3: a stamp link from `bun scripts/dev-token.ts stamp 3`
 # Screenshots land in Maestro's --test-output-dir (it refuses paths outside it).
 appId: md.chong.cafecard
 ---
+# The "Stamp added" sheet closes itself after 2.6 s, and openLink waits longer
+# than that for the screen to settle. So the workflow opens this stamp link
+# itself once the "ready" marker appears, while this waits for the sheet.
+- takeScreenshot: ready
+- extendedWaitUntil:
+    visible: "Stamp added"
+    timeout: 60000
+- waitForAnimationToEnd:
+    timeout: 1200
+- takeScreenshot: 02-stamp-added
 - extendedWaitUntil:
     notVisible: "Stamp added"
     timeout: 20000

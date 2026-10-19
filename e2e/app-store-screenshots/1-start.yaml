@@ -1,5 +1,5 @@
 # App Store screenshots, part 1 of 2 (.github/workflows/ios-simulator.yml runs
-# them with screenshots: true; the stamp-added shot is taken between the two).
+# both with screenshots: true).
 # The same five screens as the Play listing, in docs/store/raw/. Never add one
 # that shows a redemption code: it carries real signed stamps.
 #   STAMP5: a stamp link from `bun scripts/dev-token.ts stamp 5`
