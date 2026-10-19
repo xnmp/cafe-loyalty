@@ -1,0 +1,29 @@
+# App Store screenshots, part 1 of 2 (.github/workflows/ios-simulator.yml runs
+# them with screenshots: true; the stamp-added shot is taken between the two).
+# The same five screens as the Play listing, in docs/store/raw/. Never add one
+# that shows a redemption code: it carries real signed stamps.
+#   STAMP5: a stamp link from `bun scripts/dev-token.ts stamp 5`
+appId: md.chong.cafecard
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "Scan code to collect"
+    timeout: 60000
+
+# The first link from outside stops at iOS's "Open in …?" prompt; later ones don't.
+- openLink: ${STAMP5}
+- runFlow:
+    when:
+      visible: "Open"
+    commands:
+      - tapOn:
+          text: "Open"
+          waitToSettleTimeoutMs: 300
+# The card's accessibility label carries the count; the "5 stamps added" sheet
+# closes itself too soon to check for.
+- extendedWaitUntil:
+    visible: ".*5 of 9 stamps.*"
+    timeout: 20000
+- extendedWaitUntil:
+    notVisible: "5 stamps added"
+    timeout: 20000

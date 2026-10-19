@@ -1,0 +1,42 @@
+# App Store screenshots, part 2 of 2: carries on from the card with 6 stamps.
+#   STAMP3: a stamp link from `bun scripts/dev-token.ts stamp 3`
+#   OUT: where to save the PNGs, ending in /
+appId: md.chong.cafecard
+---
+- extendedWaitUntil:
+    notVisible: "Stamp added"
+    timeout: 20000
+- extendedWaitUntil:
+    visible: ".*6 of 9 stamps.*"
+    timeout: 5000
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}01-card
+
+- openLink: ${STAMP3}
+- runFlow:
+    when:
+      visible: "Open"
+    commands:
+      - tapOn:
+          text: "Open"
+          waitToSettleTimeoutMs: 300
+- extendedWaitUntil:
+    visible: "Lovely"
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}03-unlocked
+- tapOn: "Lovely"
+# The ticket's accessibility label replaces its visible text, so find it by ID.
+- extendedWaitUntil:
+    visible:
+      id: "reward-ticket"
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}04-reward-ready
+
+- tapOn: "History"
+- extendedWaitUntil:
+    visible: "Member since.*"
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}07-history

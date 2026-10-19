@@ -150,7 +150,7 @@ step-by-step is [`docs/app-store.md`](app-store.md).
   with *screenshots* ticked (`gh workflow run ios-simulator.yml -f
   screenshots=true`), unzip its `app-store/` PNGs into `docs/store/ios-raw/`,
   then `bun run render-store`. The Maestro flow is
-  `e2e/app-store-screenshots.yaml`; it stamps with a throwaway key made in the
+  `e2e/app-store-screenshots/`; it stamps with a throwaway key made in the
   run, so no secret is involved. Never screenshot a **Show my code** screen:
   that code is a real free drink anyone could scan off the listing.
 - **Privacy:** App Privacy is **Purchase History, not linked, App
@@ -217,6 +217,11 @@ TestFlight (§5).
       their stamps…"). If it's much slower than that, pick a faster counter phone.
 - [ ] With the customer app closed, tap the counter phone (Android): the app opens
       and the stamp lands.
+- [ ] iPhone, three times: give 1 stamp, then scan the counter screen's code with
+      the iPhone's **Camera** app (not the app's scanner) and press the banner
+      → the app opens and the stamp lands. On the iOS simulator one such link in
+      four once did nothing at all (2026-10-19, not reproduced since), so check
+      it isn't flaky on a real phone.
 
 If a tap doesn't register, move the phones slowly. NFC antennas sit in
 different places on different models, usually in the middle of the back.

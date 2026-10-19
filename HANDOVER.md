@@ -109,7 +109,7 @@ Actions → **iOS simulator build** → Run workflow (`gh workflow run
 ios-simulator.yml`). It builds unsigned for the simulator, launches the app
 and uploads a screenshot. The simulator has no NFC. With
 `-f screenshots=true` it also drives the app with Maestro
-(`e2e/app-store-screenshots.yaml`, stamps signed by a key made in the run) and
+(`e2e/app-store-screenshots/`, stamps signed by a key made in the run) and
 uploads the raw App Store screenshots.
 
 HCE unit tests (from `android/` after `bunx expo prebuild --platform android`):
