@@ -22,7 +22,7 @@ production is [NEXT_STEP.md](NEXT_STEP.md).
 - The card screen fits without scrolling on small phones (`src/features/card/fit.ts`):
   the stamps shrink first, then the header goes compact, and past 36 dp stamps it
   scrolls. Checked on a 360×760 dp emulator with 3-button navigation.
-- `bun run test` (34 suites, ~840 tests), `bunx tsc --noEmit` and
+- `bun run test` (35 suites, ~840 tests), `bunx tsc --noEmit` and
   `bunx eslint . --quiet` all pass.
 - Verified on an Android emulator (no NFC): deep-link stamps, unlock, reward
   ticket → redeem sheet → code, code re-shown from History, the counter's
@@ -66,6 +66,9 @@ production is [NEXT_STEP.md](NEXT_STEP.md).
   libraries by `app.config.test.ts`. iPhone-only (`supportsTablet: false`):
   iPads have no NFC. Not done yet: `easProjectId` (the script sets it on its
   first run; commit it).
+- The Android build in closed testing predates the spring fix (2026-10-19),
+  so its sheets and buttons still bounce too much; the next Play bundle fixes
+  that.
 
 ## Gotchas found the hard way
 
@@ -73,6 +76,16 @@ production is [NEXT_STEP.md](NEXT_STEP.md).
   On Android they intermittently leave views stuck invisible (opacity 0). Use
   `Appear` from `src/ui/motion.tsx` or explicit shared values (see
   `src/ui/Sheet.tsx`). Reproduced roughly 1 in 6 opens before the fix, 0 in 50 after.
+- **Never call Reanimated's `withSpring` directly; use `spring()` from
+  `src/ui/motion.tsx`.** Reanimated 4 defaults to mass 4, stiffness 900 and
+  damping 120, and the app's springs are tuned for Reanimated 3's mass 1,
+  stiffness 100, damping 10: raw, the sheet overshot by a third of the screen.
+  Lint blocks the import; `src/ui/Sheet.test.tsx` measures the overshoot.
+- **iOS simulator links (Maestro, `simctl openurl`) are unreliable.** The
+  first one stops at an "Open in …?" prompt, and after "Open" the simulator
+  sometimes never hands it to the app (its log shows nothing sent), so the
+  screenshot flow sends it again. Another once took 50 s to arrive. Maestro
+  counts a `notVisible` timeout from its last tap or link, not from the check.
 - **Play's Financial features declaration must stay "none".** Ticking
   *Rewards, points, frequent flier miles* got the first closed-test review
   rejected (2026-10-19, "Play Console Requirements": financial features need an
