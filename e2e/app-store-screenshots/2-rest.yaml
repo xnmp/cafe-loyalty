@@ -7,9 +7,10 @@ appId: md.chong.cafecard
 # than that for the screen to settle. So the workflow opens this stamp link
 # itself once the "ready" marker appears, while this waits for the sheet.
 - takeScreenshot: ready
+# Once the simulator took 50 s to hand the link over.
 - extendedWaitUntil:
     visible: "Stamp added"
-    timeout: 60000
+    timeout: 120000
 # No waitForAnimationToEnd here: the card's ripple never stops, so it runs for
 # about 15 s whatever its timeout says, and the sheet is gone by then. One more
 # hierarchy check (about 0.6 s) lets the sheet finish sliding in. The early
@@ -20,9 +21,11 @@ appId: md.chong.cafecard
       visible: "Stamp added"
     commands:
       - takeScreenshot: 02-stamp-added
+# Maestro counts a notVisible timeout from its last tap or link, and this flow
+# has none yet, so it has to cover the wait above too.
 - extendedWaitUntil:
     notVisible: "Stamp added"
-    timeout: 20000
+    timeout: 150000
 - extendedWaitUntil:
     visible: ".*6 of 9 stamps.*"
     timeout: 5000

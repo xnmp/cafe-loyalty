@@ -113,7 +113,9 @@ jobs:
             for _ in $(seq 120); do
               if [ -n "$(find maestro-out -name ready.png 2>/dev/null)" ]; then
                 sleep 2
+                echo "$(date +%T) opening the stamp link"
                 xcrun simctl openurl "$DEVICE" "$STAMP1"
+                echo "$(date +%T) simctl openurl returned"
                 exit 0
               fi
               sleep 1
