@@ -26,6 +26,13 @@ appId: md.chong.cafecard
 - waitForAnimationToEnd
 - takeScreenshot: 03-unlocked
 - tapOn: "Lovely"
+# The simulator once lost this tap in one run out of four (traced: when a tap
+# arrives, the sheet closes), so try once more rather than fail the run.
+- runFlow:
+    when:
+      visible: "Lovely"
+    commands:
+      - tapOn: "Lovely"
 # The ticket's accessibility label replaces its visible text, so find it by ID.
 - extendedWaitUntil:
     visible:
