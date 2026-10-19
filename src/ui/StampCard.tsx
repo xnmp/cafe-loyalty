@@ -7,11 +7,11 @@ import Animated, {
   useSharedValue,
   withDelay,
   withSequence,
-  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 import Svg, { Circle, Path } from 'react-native-svg';
 
+import { spring } from './motion';
 import { AppText } from './primitives';
 import { elevation, font, radius, space, useTheme, withAlpha } from './theme';
 
@@ -114,8 +114,8 @@ const Slot = memo(function Slot({ size, index, filled, delay }: { size: number; 
     if (isFilled) {
       // Rubber stamp: comes down big and twisted, lands with a spring.
       opacity.set(withDelay(delay, withTiming(1, { duration: 80 })));
-      scale.set(withDelay(delay, withSequence(withTiming(1.7, { duration: 0 }), withSpring(1, { damping: 11, stiffness: 260, mass: 0.7 }))));
-      turn.set(withDelay(delay, withSequence(withTiming(rotation - 18, { duration: 0 }), withSpring(rotation, { damping: 12 }))));
+      scale.set(withDelay(delay, withSequence(withTiming(1.7, { duration: 0 }), spring(1, { damping: 11, stiffness: 260, mass: 0.7 }))));
+      turn.set(withDelay(delay, withSequence(withTiming(rotation - 18, { duration: 0 }), spring(rotation, { damping: 12 }))));
     } else {
       opacity.set(withDelay(index * 40, withTiming(0, { duration: 220 })));
       scale.set(1);
@@ -151,7 +151,7 @@ function RewardSlot({ size, lit, label }: { size: number; lit: boolean; label: s
       return;
     }
     glow.set(withTiming(isLit ? 1 : 0, { duration: 260 }));
-    if (isLit) pop.set(withDelay(1500, withSequence(withSpring(1.22, { damping: 6 }), withSpring(1))));
+    if (isLit) pop.set(withDelay(1500, withSequence(spring(1.22, { damping: 6 }), spring(1))));
   });
   const glowStyle = useAnimatedStyle(() => ({ opacity: glow.value, transform: [{ scale: pop.value }] }));
   return (

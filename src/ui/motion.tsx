@@ -3,6 +3,7 @@ import { useEffect, useMemo, type ReactNode } from 'react';
 import { StyleSheet, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   Easing,
+  Reanimated3DefaultSpringConfig,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -14,6 +15,18 @@ import Animated, {
 import Svg, { Circle } from 'react-native-svg';
 
 import { useTheme, withAlpha } from './theme';
+
+/**
+ * `withSpring` on Reanimated 3's defaults (mass 1, stiffness 100, damping 10),
+ * which every spring in the app is tuned against. Reanimated 4 changed them to
+ * mass 4, stiffness 900 and damping 120, which made those springs twice as slow
+ * and far bouncier: the bottom sheet flew a third of the screen past its place.
+ * Use this, never `withSpring` directly (lint enforces it).
+ */
+export function spring(toValue: number, config: { damping?: number; stiffness?: number; mass?: number } = {}) {
+  'worklet';
+  return withSpring(toValue, { ...Reanimated3DefaultSpringConfig, ...config });
+}
 
 export type AppearFrom = 'fade' | 'zoom' | 'pop' | 'rise';
 
@@ -30,9 +43,9 @@ export function Appear({ from = 'fade', delay = 0, style, children }: { from?: A
     // Kick off the entrance on mount (an animation side effect, not state sync).
     const to =
       from === 'fade' ? withTiming(1, { duration: 200, easing: Easing.out(Easing.quad) })
-      : from === 'pop' ? withSpring(1, { damping: 9, stiffness: 200 })
-      : from === 'zoom' ? withSpring(1, { damping: 14, stiffness: 180 })
-      : withSpring(1, { damping: 16, stiffness: 160 });
+      : from === 'pop' ? spring(1, { damping: 9, stiffness: 200 })
+      : from === 'zoom' ? spring(1, { damping: 14, stiffness: 180 })
+      : spring(1, { damping: 16, stiffness: 160 });
     p.set(delay > 0 ? withDelay(delay, to) : to);
   }, [p, from, delay, reduceMotion]);
   const animated = useAnimatedStyle(() => {

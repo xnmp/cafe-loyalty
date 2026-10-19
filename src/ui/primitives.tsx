@@ -2,9 +2,10 @@ import * as Haptics from 'expo-haptics';
 import { ChevronLeft, type LucideIcon } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, type StyleProp, type TextProps, type TextStyle, type ViewStyle } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
 
+import { spring } from './motion';
 import { radius, space, type, useTheme, withAlpha, type TextVariant } from './theme';
 
 type Tone = 'ink' | 'muted' | 'accent' | 'onAccent' | 'success' | 'danger';
@@ -72,10 +73,10 @@ export function Squishy({
       hitSlop={hitSlop}
       disabled={disabled}
       onPressIn={() => {
-        scale.set(withSpring(0.96, { damping: 20, stiffness: 400 }));
+        scale.set(spring(0.96, { damping: 20, stiffness: 400 }));
       }}
       onPressOut={() => {
-        scale.set(withSpring(1, { damping: 14, stiffness: 300 }));
+        scale.set(spring(1, { damping: 14, stiffness: 300 }));
       }}
       onPress={() => {
         if (haptic) void Haptics.selectionAsync().catch(() => undefined);

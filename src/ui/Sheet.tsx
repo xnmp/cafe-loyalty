@@ -1,8 +1,9 @@
 import { useEffect, type ReactNode } from 'react';
 import { Modal, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { spring } from './motion';
 import { elevation, radius, space, useTheme } from './theme';
 
 /** Bottom sheet over a warm scrim. Tapping the scrim dismisses when `onDismiss` is given. */
@@ -31,7 +32,7 @@ function SheetBody({ onDismiss, overlay, children }: { onDismiss?: () => void; o
   const open = useSharedValue(reduceMotion ? 1 : 0);
   useEffect(() => {
     // Slide in on mount (an animation side effect, not state sync).
-    if (!reduceMotion) open.set(withSpring(1, { damping: 18, stiffness: 180 }));
+    if (!reduceMotion) open.set(spring(1, { damping: 18, stiffness: 180 }));
   }, [open, reduceMotion]);
   const scrimStyle = useAnimatedStyle(() => ({ opacity: Math.min(1, open.get() * 2) }));
   const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: (1 - open.get()) * height }] }));
