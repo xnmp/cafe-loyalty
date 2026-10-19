@@ -23,6 +23,28 @@ appId: md.chong.cafecard
 # closes itself too soon to check for.
 - extendedWaitUntil:
     visible: ".*5 of 9 stamps.*"
+    timeout: 15000
+    optional: true
+# The simulator sometimes swallows the link after "Open" is pressed (its log
+# shows the prompt closing and nothing sent to the app), so send it once more.
+# The same stamp link twice adds nothing: the app says "Already on your card".
+- runFlow:
+    when:
+      notVisible: ".*5 of 9 stamps.*"
+    commands:
+      - openLink: ${STAMP5}
+      - runFlow:
+          when:
+            visible: "Open"
+          commands:
+            - tapOn:
+                text: "Open"
+                waitToSettleTimeoutMs: 300
+- extendedWaitUntil:
+    visible: ".*5 of 9 stamps.*"
+    timeout: 20000
+- extendedWaitUntil:
+    notVisible: "Already on your card"
     timeout: 20000
 - extendedWaitUntil:
     notVisible: "5 stamps added"
